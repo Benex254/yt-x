@@ -1,0 +1,578 @@
+#!/usr/bin/env bash
+
+CLI_HEADER='
+██╗░░░██╗████████╗░░░░░░██╗░░██╗
+╚██╗░██╔╝╚══██╔══╝░░░░░░╚██╗██╔╝
+░╚████╔╝░░░░██║░░░█████╗░╚███╔╝░
+░░╚██╔╝░░░░░██║░░░╚════╝░██╔██╗░
+░░░██║░░░░░░██║░░░░░░░░░██╔╝╚██╗
+░░░╚═╝░░░░░░╚═╝░░░░░░░░░╚═╝░░╚═╝
+'
+
+CLI_NAME=${0##*/}
+CLI_VERSION="0.1.0"
+CLI_AUTHOR="BeneX-254"
+CLI_DIR="$(dirname "$(realpath "$0")")"
+CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
+CLI_CACHE_DIR="$HOME/.cache/$CLI_NAME"
+
+[ -d "$CLI_CONFIG_DIR" ] || mkdir -p "$CLI_CONFIG_DIR"
+[ -d "$CLI_CACHE_DIR" ] || mkdir -p "$CLI_CACHE_DIR"
+
+load_config() {
+  PRETTY_PRINT="$(grep -s 'PRETTY_PRINT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PRETTY_PRINT" ] && PRETTY_PRINT="true"
+
+  DISOWN_STREAMING_PROCESS="$(grep -s 'DISOWN_STREAMING_PROCESS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$DISOWN_STREAMING_PROCESS" ] && DISOWN_STREAMING_PROCESS="true"
+
+  PREFERRED_EDITOR="$(grep -s 'EDITOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PREFERRED_EDITOR" ] && PREFERRED_EDITOR=${EDITOR:-open}
+
+  PREFERRED_SELECTOR="$(grep -s 'PREFERRED_SELECTOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PREFERRED_SELECTOR" ] && PREFERRED_SELECTOR="fzf"
+
+  ENABLE_PREVIEW="$(grep -s 'ENABLE_PREVIEW:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$ENABLE_PREVIEW" ] && ENABLE_PREVIEW="true"
+
+  UPDATE_RECENT="$(grep -s 'UPDATE_RECENT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$UPDATE_RECENT" ] && UPDATE_RECENT="true"
+
+  NO_OF_RECENT="$(grep -s 'NO-OF-RECENT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$NO_OF_RECENT" ] && NO_OF_RECENT=30
+
+  PREFERRED_BROWSER="$(grep -s 'PREFERRED_BROWSER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER='chrome'
+
+  NO_OF_SEARCH_RESULTS="$(grep -s 'NUMBER_OF_SEARCH_RESULTS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$NO_OF_SEARCH_RESULTS" ] && NO_OF_SEARCH_RESULTS=30
+
+  NOTIFICATION_DURATION="$(grep -s 'NOTIFICATION_DURATION:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$NOTIFICATION_DURATION" ] && NOTIFICATION_DURATION=5
+
+  DOWNLOAD_DIRECTORY="$(grep -s 'DOWNLOAD_DIRECTORY:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$DOWNLOAD_DIRECTORY" ] && DOWNLOAD_DIRECTORY="$HOME/Videos/$CLI_NAME"
+  [ -d "$DOWNLOAD_DIRECTORY" ] || mkdir -p "$DOWNLOAD_DIRECTORY"
+
+  ROFI_THEME="$(grep -s 'ROFI_THEME:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+
+  FZF_DEFAULT_OPTS=${LIBX_FZF_OPTS:-'
+    --color=fg:#d0d0d0,fg+:#d0d0d0,bg:#121212,bg+:#262626
+    --color=hl:#5f87af,hl+:#5fd7ff,info:#afaf87,marker:#87ff00
+    --color=prompt:#d7005f,spinner:#af5fff,pointer:#af5fff,header:#87afaf
+    --color=border:#262626,label:#aeaeae,query:#d9d9d9
+    --border="rounded" --border-label="" --preview-window="border-rounded" --prompt="> "
+    --marker=">" --pointer="◆" --separator="─" --scrollbar="│"
+  '}
+  export FZF_DEFAULT_OPTS PRETTY_PRINT
+}
+fzf-preview() {
+
+  file=${1/#\~\//$HOME/}
+  type=$(file --dereference --mime -- "$file")
+
+  if [[ ! $type =~ image/ ]]; then
+    if [[ $type =~ =binary ]]; then
+      file "$1"
+      exit
+    fi
+
+    # Sometimes bat is installed as batcat.
+    if command -v batcat >/dev/null; then
+      batname="batcat"
+    elif command -v bat >/dev/null; then
+      batname="bat"
+    else
+      cat "$1"
+      exit
+    fi
+
+    ${batname} --style="${BAT_STYLE:-numbers}" --color=always --pager=never -- "$file"
+    exit
+  fi
+
+  dim=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}
+  if [[ $dim = x ]]; then
+    dim=$(stty size </dev/tty | awk '{print $2 "x" $1}')
+  elif ! [[ $KITTY_WINDOW_ID ]] && ((FZF_PREVIEW_TOP + FZF_PREVIEW_LINES == $(stty size </dev/tty | awk '{print $1}'))); then
+    # Avoid scrolling issue when the Sixel image touches the bottom of the screen
+    # * https://github.com/junegunn/fzf/issues/2544
+    dim=${FZF_PREVIEW_COLUMNS}x$((FZF_PREVIEW_LINES - 1))
+  fi
+
+  # 1. Use kitty icat on kitty terminal
+  if [[ $KITTY_WINDOW_ID ]]; then
+    # 1. 'memory' is the fastest option but if you want the image to be scrollable,
+    #    you have to use 'stream'.
+    #
+    # 2. The last line of the output is the ANSI reset code without newline.
+    #    This confuses fzf and makes it render scroll offset indicator.
+    #    So we remove the last line and append the reset code to its previous line.
+    kitty icat --clear --transfer-mode=memory --unicode-placeholder --stdin=no --place="$dim@0x0" "$file" | sed '$d' | sed $'$s/$/\e[m/'
+
+    # 2. Use chafa with Sixel output
+  elif command -v chafa >/dev/null; then
+    chafa -f sixel -s "$dim" "$file"
+    # Add a new line character so that fzf can display multiple images in the preview window
+    echo
+
+    # 3. If chafa is not found but imgcat is available, use it on iTerm2
+  elif command -v imgcat >/dev/null; then
+    # NOTE: We should use https://iterm2.com/utilities/it2check to check if the
+    # user is running iTerm2. But for the sake of simplicity, we just assume
+    # that's the case here.
+    imgcat -W "${dim%%x*}" -H "${dim##*x}" "$file"
+
+    # 4. Cannot find any suitable method to preview the image
+  else
+    file "$file"
+  fi
+}
+
+confirm() {
+  if command -v "gum" &>/dev/null; then
+    gum confirm "$1"
+  else
+    echo "$CLI_HEADER" >/dev/stderr
+    read -r -p 'Are you sure you want to proceed [y/N]?: ' CONFIRMED
+    case "$CONFIRMED" in
+    y | Y)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+    esac
+  fi
+}
+launcher() {
+  # clear
+  case "${PREFERRED_SELECTOR,,}" in
+  rofi)
+    if [ -z "$ROFI_THEME" ]; then
+      rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
+    else
+      rofi -no-config -theme "$ROFI_THEME" -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
+    fi
+    ;;
+  *)
+    fzf \
+      --info=hidden \
+      --layout=reverse \
+      --height=100% \
+      --prompt="${1}: " \
+      --header-first --header="$CLI_HEADER" \
+      --exact --cycle
+    ;;
+  esac
+
+}
+launcher_with_preview() {
+  clear
+  case "${PREFERRED_SELECTOR,,}" in
+  rofi)
+    if [ -z "$ROFI_THEME" ]; then
+      rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "$1" -matching fuzzy -sorting-method fzf
+    else
+      rofi -no-config -theme "$ROFI_THEME" -sort -matching fuzzy -dmenu -i -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
+    fi
+    ;;
+  *)
+    fzf \
+      --info=hidden \
+      --layout=reverse \
+      --height=100% \
+      --prompt="${1}: " \
+      --header-first --header="$CLI_HEADER" \
+      --preview-window=left,35%,wrap --bind=right:accept \
+      --expect=shift-left,shift-right --tabstop=1 \
+      --cycle --exact \
+      --ansi --preview="\
+      if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
+        video=\"\$(echo \"\$search_results\"|grep \"\$(echo {}|sed 's/\\[/\\\\[/g;s/\\]/\\\\]/g')\" --line-number|sed -E 's/^([0-9]+):/\1|/g')\";
+        init_pretty_print;
+        id=\$(echo \$video|cut -d '|' -f 1);
+        title=\"\$(echo \"\$video\"|cut -d '|' -f 2)\";
+        channel=\$(echo \"\$video\"|cut -d '|' -f 6);
+        seconds=\$(echo \"\$video\"|cut -d '|' -f 5);
+        minutes=\$((\${seconds:-0}/60));
+        [[ \$minutes -gt 59 ]] && hours=\$((\${minutes-:0}/60));
+        [[ -z \$hours ]] && duration=\"\$minutes mins\";
+        [[ -n \$hours ]] && duration=\"\$hours hrs\";
+        view_count=\$(echo \"\$video\"|cut -d '|' -f 9);
+        live_status=\$(echo \"\$video\"|cut -d '|' -f 10);
+        [ \"\$live_status\" = \"null\" ] && live_status='false' 
+        description=\$(echo \"\$video\"|cut -d '|' -f 4);
+        echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
+        echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$title\";
+        echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
+        echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
+        echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
+        echo \"\${MAGENTA}\${BOLD}Live Status: \${RESET}\$live_status\";
+        echo \"\${MAGENTA}\${BOLD}Description: \${RESET}\$description\";
+      else
+        echo Loading...;
+      fi;
+      "
+    ;;
+  esac
+
+}
+init_pretty_print() {
+  if [ "$PRETTY_PRINT" = "true" ]; then
+    # Check if stdout is a terminal
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+    YELLOW=$(tput setaf 3)
+    BLUE=$(tput setaf 4)
+    MAGENTA=$(tput setaf 5)
+    CYAN=$(tput setaf 6)
+    WHITE=$(tput setaf 7)
+    BOLD=$(tput bold)
+    BLACK=$(tput setaf 0)
+    RESET=$(tput sgr0)
+  fi
+
+}
+byebye() {
+  clear
+  echo "Have a good day $USERNAME"
+  exit 0
+}
+prompt() {
+  clear
+  if command -v "gum" &>/dev/null; then
+    gum input --header "$CLI_HEADER" --prompt "$1: "
+  else
+    echo "$CLI_HEADER" >/dev/stderr
+    read -r -p "$1: " VAL
+    echo "$VAL"
+  fi
+}
+run_yt_dlp() {
+  clear
+  if command -v "gum" &>/dev/null; then
+    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" --cookies-from-browser "$PREFERRED_BROWSER"
+  else
+    echo "Loading..."
+    yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" --cookies-from-browser "$PREFERRED_BROWSER"
+  fi
+
+}
+trap byebye INT TERM
+main() {
+  clear
+  if [ -z "$action" ]; then
+    action="$(printf 'Your Feed\nTrending\nSearch\nExit' | launcher "Select Action")"
+  fi
+  [ "$action" = "Exit" ] && byebye
+  case "$action" in
+  "Your Feed")
+    url="https://www.youtube.com"
+    run_yt_dlp "$url"
+    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  "Trending")
+    url="https://www.youtube.com/feed/trending"
+    run_yt_dlp "$url"
+    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  "Search")
+    search_Term=$(prompt "Enter term to search for")
+    url="https://www.youtube.com/results?search_query=$search_Term&sp=EgIQAQ%253D%253D"
+    results=$(run_yt_dlp "$url")
+    echo $results
+    read
+    search_results=$(echo "$results" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  "Subscription Feed")
+    url="https://www.youtube.com/feed/subscriptions"
+    run_yt_dlp "$url"
+    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  "Liked Videos")
+    url="https://www.youtube.com/playlist?list=LL"
+    run_yt_dlp "$url"
+    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  "Watch Later")
+    url="https://www.youtube.com/playlist?list=WL"
+    run_yt_dlp "$url"
+    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  "Watch History")
+    url="https://www.youtube.com/feed/history"
+    run_yt_dlp "$url"
+    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    ;;
+  Exit)
+    byebye
+    ;;
+  *)
+    echo invalid action
+    sleep "$NOTIFICATION_DURATION"
+    main
+    ;;
+  esac
+  unset action
+  titles=$(echo "$search_results" | cut -d '|' -f 1)
+  while true; do
+    if [ "$ENABLE_PREVIEW" = "true" ]; then
+      SHELL="bash"
+      export search_results SHELL
+      export -f init_pretty_print
+      title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" | tr -d '\n')"
+    else
+      title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher "select video")"
+    fi
+    [ "$title" = "Main Menu" ] && break
+    [ "$title" = "Exit" ] && byebye
+
+    video="$(echo "$search_results" | grep "$(echo "$title" | sed 's/\[/\\[/g;s/\]/\\]/g')")"
+
+    while true; do
+      if [ -z "$media_action" ]; then
+        media_action="$(printf 'Watch\nLike\nSubscribe to Channel\nDownload\nBack\nMain Menu\nExit' | launcher "Select Media Action")"
+      fi
+      [ "$media_action" = "Exit" ] && byebye
+      case "$media_action" in
+      Watch)
+        mpv "$(echo "$video" | cut -d '|' -f 2)"
+        ;;
+      Like)
+        echo $video
+        exit
+        ;;
+      "Subscribe to Channel")
+        mpv "$(echo "$video" | cut -d '|' -f 2)"
+        ;;
+      "Visit Channel")
+        command ...
+        ;;
+      "Open in Browser")
+        open "$(echo "$video" | cut -d '|' -f 2)"
+        ;;
+      Download)
+        mpv "$(echo "$video" | cut -d '|' -f 2)"
+        ;;
+      Back)
+        unset media_action
+        break
+        ;;
+      "Main Menu")
+        MAIN=true
+        unset media_action
+        break
+        ;;
+      Exit)
+        byebye
+        ;;
+      *)
+        echo invalid action
+        sleep "$NOTIFICATION_DURATION"
+        ;;
+      esac
+      unset media_action
+    done
+    if [ "$MAIN" = true ]; then
+      MAIN=false
+      break
+    fi
+  done
+  main
+}
+
+usage() {
+  printf "\
+A script written to browse youtube from the terminal
+
+Usage: %s [arguments] [options] 
+
+Commandline options override the config
+
+Options:
+  -s, --search
+    search for a video
+  -e, --edit-config
+    edit $CLI_NAME config file
+  --rofi-theme <path>
+    set the path to your rofi config file
+  -d, --disown-streaming-process
+    disown the streaming process so you can contine streaming even if you close $CLI_NAME
+  -D, --no-disown-streaming-process
+    don't disown the streaming process
+  -p <selector>,--preferred-selector <selector>
+    set the preferred selector for $CLI_NAME to use
+  --preview
+    enable the preview window
+  --no-preview
+    disable the preview window
+  -E, --generate-desktop-entry
+    print the desktop entry and exit
+  -h, --help
+    Show this help message and exit
+  -v, --version
+    print the $CLI_NAME version and exit
+
+arguments:
+  completions
+    generates shell completions for $CLI_NAME
+
+Examples:
+  $CLI_NAME --generate-desktop-entry
+  $CLI_NAME completions --fish 
+" "$CLI_NAME"
+  exit "$1"
+}
+load_config
+while [ $# -gt 0 ]; do
+  case "$1" in
+  -h | --help)
+    usage 0
+    ;;
+  -v | --version)
+    echo "$CLI_NAME $CLI_VERSION Copyright © 2024 $CLI_AUTHOR projects"
+    exit 0
+    ;;
+  -e | --edit-config)
+    $PREFERRED_EDITOR "$CLI_CONFIG_DIR/${CLI_NAME}.conf" || exit 1
+    exit 0
+    ;;
+  -s | --search)
+    [ -n "$2" ] || usage 1
+    SEARCH="$2"
+    shift
+    ;;
+  -p | --preferred-selector)
+    [ -n "$2" ] || usage 1
+    PREFERRED_SELECTOR="$2"
+    shift
+    ;;
+  --private)
+    UPDATE_RECENT="false"
+    ;;
+  --preview)
+    ENABLE_PREVIEW="true"
+    ;;
+  --no-preview)
+    ENABLE_PREVIEW="false"
+    ;;
+  -d | --disown-reading-process)
+    DISOWN_STREAMING_PROCESS="true"
+    ;;
+  -D | --no-disown-reading-process)
+    DISOWN_STREAMING_PROCESS="false"
+    ;;
+  --rofi-theme)
+    [ -n "$2" ] || usage 1
+    ROFI_THEME="$2"
+    shift
+    ;;
+  -E | --generate-desktop-entry)
+    echo "
+[Desktop Entry]
+Name=$CLI_NAME
+Type=Application
+version=$CLI_VERSION
+Path=$HOME
+Comment=Read and manage your calibre books from the terminal
+Terminal=false
+Icon=$CLI_DIR/assets/logo.png
+Exec=$0 --preferred-selector rofi
+Categories=Education
+    "
+    exit 0
+    ;;
+  completions)
+    [ -n "$2" ] || usage 1
+    case "$2" in
+    -f | --fish)
+      echo "\
+# --- functions ---
+function _lib_x_complete_search
+  for comp_line in (calibredb list_categories --csv) 
+    echo (echo \$comp_line|cut --delimiter , --fields 1):(echo \$comp_line|cut --delimiter , --fields 2|tr -d '\"')
+  end
+end
+
+# --- completions ---
+complete -c $CLI_NAME --no-files --arguments \"completions\" --condition 'not __fish_contains_opt search s sort-by S e edit-config p preferred-selector d disown-reading-process D no-disown-reading-process E generate-desktop-entry rofi-theme'
+
+complete -c $CLI_NAME --no-files --short-option h --long-option help --description 'Print a short help text and exit'
+complete -c $CLI_NAME --no-files --short-option v --long-option version --description 'Print a short version string and exit' --condition 'not __fish_seen_subcommand_from completions'
+
+complete -c $CLI_NAME --no-files --short-option e --long-option edit-config --description 'Edit $CLI_NAME config file' --condition 'not __fish_seen_subcommand_from completions'
+complete -c $CLI_NAME --no-files --short-option p --long-option preferred-selector --description 'your preferred selector' --condition 'not __fish_seen_subcommand_from completions' --exclusive --arguments 'fzf rofi'
+complete -c $CLI_NAME --no-files --short-option d --long-option disown-reading-process --description 'disown the reading process' --condition 'not __fish_seen_subcommand_from completions'
+complete -c $CLI_NAME --no-files --short-option D --long-option no-disown-reading-process --description 'dont disown the reading process' --condition 'not __fish_seen_subcommand_from completions'
+complete -c $CLI_NAME --no-files --short-option E --long-option generate-desktop-entry --description 'generate desktop entry info' --condition 'not __fish_seen_subcommand_from completions' 
+complete -c $CLI_NAME --no-files --short-option P --long-option private --description 'dont update recent' --condition 'not __fish_seen_subcommand_from completions'
+
+complete -c $CLI_NAME --no-files --long-option preview --description 'enable preview window' --condition 'not __fish_seen_subcommand_from completions' 
+complete -c $CLI_NAME --no-files --long-option no-preview --description 'disable preview window' --condition 'not __fish_seen_subcommand_from completions' 
+
+complete -c $CLI_NAME --force-files --long-option rofi-theme --description 'the path to your rofi config file' --condition 'not __fish_seen_subcommand_from completions' 
+
+complete -c $CLI_NAME --no-files --short-option s --long-option search --description 'search for a book' --condition 'not __fish_seen_subcommand_from completions' --exclusive --arguments \"(_lib_x_complete_search)\"
+
+complete -c $CLI_NAME --no-files --short-option z --long-option zsh --description 'print zsh completions' --condition '__fish_seen_subcommand_from completions'
+complete -c $CLI_NAME --no-files --short-option b --long-option bash --description 'print bash completions' --condition '__fish_seen_subcommand_from completions'
+complete -c $CLI_NAME --no-files --short-option f --long-option fish --description 'print fish completions' --condition '__fish_seen_subcommand_from completions'
+    "
+      ;;
+    -b | --bash)
+      # TODO: write bash completions
+      command ...
+      ;;
+    -z | --zsh)
+      # TODO: write zsh completions
+      command ...
+      ;;
+    -h | --help)
+      echo "\
+Generate shell completions for $CLI_NAME
+
+Options:
+  --fish
+    print fish completions and exit
+  --bash
+    print bash completions and exit
+  --zsh
+    print zsh completions and exit
+
+Example:
+  $CLI_NAME completions --fish
+  $CLI_NAME completions --bash
+  $CLI_NAME completions --zsh
+    "
+      ;;
+    *)
+      echo "\
+Generate shell completions for $CLI_NAME
+
+Options:
+  --fish
+    print fish completions and exit
+  --bash
+    print bash completions and exit
+  --zsh
+    print zsh completions and exit
+
+Example:
+  $CLI_NAME completions --fish
+  $CLI_NAME completions --bash
+  $CLI_NAME completions --zsh
+    "
+      exit 1
+      ;;
+
+    esac
+    exit 0
+    ;;
+  *)
+    usage 1
+    ;;
+  esac
+  shift
+done
+main
