@@ -15,9 +15,10 @@ CLI_AUTHOR="BeneX-254"
 CLI_DIR="$(dirname "$(realpath "$0")")"
 CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
 CLI_CACHE_DIR="$HOME/.cache/$CLI_NAME"
+CLI_PREVIEW_IMAGES_CACHE_DIR="$CLI_CACHE_DIR/preview_images"
 
 [ -d "$CLI_CONFIG_DIR" ] || mkdir -p "$CLI_CONFIG_DIR"
-[ -d "$CLI_CACHE_DIR" ] || mkdir -p "$CLI_CACHE_DIR"
+[ -d "$CLI_PREVIEW_IMAGES_CACHE_DIR" ] || mkdir -p "$CLI_PREVIEW_IMAGES_CACHE_DIR"
 
 load_config() {
   PRETTY_PRINT="$(grep -s 'PRETTY_PRINT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
@@ -64,6 +65,7 @@ load_config() {
     --border="rounded" --border-label="" --preview-window="border-rounded" --prompt="> "
     --marker=">" --pointer="◆" --separator="─" --scrollbar="│"
   '}
+  init_pretty_print
   export FZF_DEFAULT_OPTS PRETTY_PRINT
 }
 fzf-preview() {
@@ -72,23 +74,11 @@ fzf-preview() {
   type=$(file --dereference --mime -- "$file")
 
   if [[ ! $type =~ image/ ]]; then
-    if [[ $type =~ =binary ]]; then
-      file "$1"
-      exit
-    fi
-
     # Sometimes bat is installed as batcat.
-    if command -v batcat >/dev/null; then
-      batname="batcat"
-    elif command -v bat >/dev/null; then
-      batname="bat"
-    else
-      cat "$1"
-      exit
-    fi
-
-    ${batname} --style="${BAT_STYLE:-numbers}" --color=always --pager=never -- "$file"
-    exit
+    echo hmmm weird this should never be the case
+    echo for some reason the mime type for the given file is not an image
+    echo please report this to the devs
+    return 1
   fi
 
   dim=${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}
@@ -112,7 +102,10 @@ fzf-preview() {
 
     # 2. Use chafa with Sixel output
   elif command -v chafa >/dev/null; then
-    chafa -f sixel -s "$dim" "$file"
+    case "$(uname -a)" in
+    *ndroid) chafa -s "$dim" "$file" ;;
+    *) chafa -f sixel -s "$dim" "$file" ;;
+    esac
     # Add a new line character so that fzf can display multiple images in the preview window
     echo
 
@@ -125,7 +118,8 @@ fzf-preview() {
 
     # 4. Cannot find any suitable method to preview the image
   else
-    file "$file"
+    echo please install a terminal image viewer
+    echo either icat for kitty terminal and wezterm or imgcat or chafa
   fi
 }
 
@@ -167,8 +161,20 @@ launcher() {
   esac
 
 }
+download_preview_images() {
+  echo Downloading images in the background...
+  ids="$(echo "$search_results" | jq '.entries[].id' -r)"
+  urls="$(echo "$search_results" | jq '.entries[].thumbnails[-1].url' -r)"
+
+  [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+  for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
+    echo "url = \"$(echo "$urls" | head -n $i | tail -n 1)\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+    echo "output = \"$CLI_PREVIEW_IMAGES_CACHE_DIR/$(echo "$ids" | head -n $i | tail -n 1).jpg\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+  done
+  curl -s -K "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" &
+}
 launcher_with_preview() {
-  clear
+  # clear
   case "${PREFERRED_SELECTOR,,}" in
   rofi)
     if [ -z "$ROFI_THEME" ]; then
@@ -189,22 +195,33 @@ launcher_with_preview() {
       --cycle --exact \
       --ansi --preview="\
       if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
-        video=\"\$(echo \"\$search_results\"|grep \"\$(echo {}|sed 's/\\[/\\\\[/g;s/\\]/\\\\]/g')\" --line-number|sed -E 's/^([0-9]+):/\1|/g')\";
         init_pretty_print;
-        id=\$(echo \$video|cut -d '|' -f 1);
-        title=\"\$(echo \"\$video\"|cut -d '|' -f 2)\";
-        channel=\$(echo \"\$video\"|cut -d '|' -f 6);
-        seconds=\$(echo \"\$video\"|cut -d '|' -f 5);
+
+        title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
+        video=\$(echo \"\$search_results\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\")
+
+        id=\$(echo \$video | jq '.id' -r);
+
+        channel=\$(echo \"\$video\"| jq '.channel' -r);
+
+        seconds=\$(echo \"\$video\"| jq '.duration' -r);
         minutes=\$((\${seconds:-0}/60));
         [[ \$minutes -gt 59 ]] && hours=\$((\${minutes-:0}/60));
         [[ -z \$hours ]] && duration=\"\$minutes mins\";
         [[ -n \$hours ]] && duration=\"\$hours hrs\";
-        view_count=\$(echo \"\$video\"|cut -d '|' -f 9);
-        live_status=\$(echo \"\$video\"|cut -d '|' -f 10);
+        
+        view_count=\$(echo \"\$video\"| jq '.view_count' -r);
+        
+        live_status=\$(echo \"\$video\"| jq '.live_status' -r);
         [ \"\$live_status\" = \"null\" ] && live_status='false' 
-        description=\$(echo \"\$video\"|cut -d '|' -f 4);
+        
+        description=\$(echo \"\$video\"| jq '.description' -r);
+        
+        if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\";
+        else echo loading preview image...;
+        fi
         echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
-        echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$title\";
+        echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title' -r)\";
         echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
         echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
         echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
@@ -240,7 +257,6 @@ byebye() {
   exit 0
 }
 prompt() {
-  clear
   if command -v "gum" &>/dev/null; then
     gum input --header "$CLI_HEADER" --prompt "$1: "
   else
@@ -250,60 +266,53 @@ prompt() {
   fi
 }
 run_yt_dlp() {
-  clear
+  # clear
   if command -v "gum" &>/dev/null; then
     gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" --cookies-from-browser "$PREFERRED_BROWSER"
   else
     echo "Loading..."
     yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" --cookies-from-browser "$PREFERRED_BROWSER"
   fi
+  # cat ./search.2.json
 
 }
 trap byebye INT TERM
 main() {
   clear
   if [ -z "$action" ]; then
-    action="$(printf 'Your Feed\nTrending\nSearch\nExit' | launcher "Select Action")"
+    action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nLiked Videos\nWatch History\nExit' | launcher "Select Action")"
   fi
   [ "$action" = "Exit" ] && byebye
   case "$action" in
   "Your Feed")
     url="https://www.youtube.com"
-    run_yt_dlp "$url"
-    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Trending")
     url="https://www.youtube.com/feed/trending"
-    run_yt_dlp "$url"
-    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Search")
-    search_Term=$(prompt "Enter term to search for")
+    clear
+    search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
     url="https://www.youtube.com/results?search_query=$search_Term&sp=EgIQAQ%253D%253D"
-    results=$(run_yt_dlp "$url")
-    echo $results
-    read
-    search_results=$(echo "$results" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Subscription Feed")
     url="https://www.youtube.com/feed/subscriptions"
-    run_yt_dlp "$url"
-    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Liked Videos")
     url="https://www.youtube.com/playlist?list=LL"
-    run_yt_dlp "$url"
-    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Watch Later")
     url="https://www.youtube.com/playlist?list=WL"
-    run_yt_dlp "$url"
-    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Watch History")
     url="https://www.youtube.com/feed/history"
-    run_yt_dlp "$url"
-    search_results=$(jq '.' --compact-output <"$CLI_DIR/search.json" | sed 's/"__x_forwarded_for_ip"/\n/g;s/|/-/g' | sed -E 's/.*"ie_key":.*,"url":"(.*)","title":"(.*)","description":"*([^"]*)"*,"duration":([0-9]+),.*"channel":"(.*)","channel_url":"(.*)","uploader":".*","uploader_id".*"thumbnails":.*"url":"(.*)","height".*"view_count":([0-9]+),"live_status":"*([^"]*)"*,.*/\2|\1|\3|\4|\5|\6|\7|\8|\9/g' | grep -e 'ie_key' -e 'requested_entries' --invert-match | tr -d '"')
+    search_results=$(run_yt_dlp "$url")
     ;;
   Exit)
     byebye
@@ -315,45 +324,51 @@ main() {
     ;;
   esac
   unset action
-  titles=$(echo "$search_results" | cut -d '|' -f 1)
+
+  titles=$(echo "$search_results" | jq '.entries[].title' -r)
+  [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images
   while true; do
     if [ "$ENABLE_PREVIEW" = "true" ]; then
       SHELL="bash"
       export search_results SHELL
-      export -f init_pretty_print
+      export -f init_pretty_print fzf-preview
       title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" | tr -d '\n')"
     else
       title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher "select video")"
     fi
+    clear
+    title="$(echo "$title" | sed 's/"/\\"/g')"
     [ "$title" = "Main Menu" ] && break
     [ "$title" = "Exit" ] && byebye
 
-    video="$(echo "$search_results" | grep "$(echo "$title" | sed 's/\[/\\[/g;s/\]/\\]/g')")"
+    video="$(echo "$search_results" | jq ".entries|map(select(.title == \"$title\"))|.[0]")"
 
     while true; do
       if [ -z "$media_action" ]; then
         media_action="$(printf 'Watch\nLike\nSubscribe to Channel\nDownload\nBack\nMain Menu\nExit' | launcher "Select Media Action")"
       fi
       [ "$media_action" = "Exit" ] && byebye
+      clear
       case "$media_action" in
       Watch)
-        mpv "$(echo "$video" | cut -d '|' -f 2)"
+        echo "${MAGENTA}Now watching:${RESET} $title"
+        mpv "$(echo "$video" | jq '.url' -r)"
         ;;
       Like)
         echo $video
         exit
         ;;
       "Subscribe to Channel")
-        mpv "$(echo "$video" | cut -d '|' -f 2)"
+        mpv "$(echo "$video" | jq '.url' -r)"
         ;;
       "Visit Channel")
-        command ...
+        mpv "$(echo "$video" | jq '.url' -r)"
         ;;
       "Open in Browser")
-        open "$(echo "$video" | cut -d '|' -f 2)"
+        open "$(echo "$video" | jq '.url' -r)"
         ;;
       Download)
-        mpv "$(echo "$video" | cut -d '|' -f 2)"
+        yt-dlp "$(echo "$video" | jq '.url' -r)" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s"
         ;;
       Back)
         unset media_action
