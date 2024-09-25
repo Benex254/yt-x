@@ -346,8 +346,13 @@ run_yt_dlp() {
   # cat ./search.2.json
 
 }
+
+core_dep_ch() {
+  ! command -v "yt-dlp" &>/dev/null && echo yt-dlp is not installed and is a core dep please install it to proceed && exit 1
+}
 trap byebye INT TERM
 main() {
+  core_dep_ch
   clear
   if [ -z "$action" ]; then
     action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nLiked Videos\nWatch History\nExit' | launcher "Select Action")"
