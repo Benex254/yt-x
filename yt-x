@@ -58,7 +58,7 @@ load_config() {
   [ -z "$PLAYER" ] && PLAYER='mpv'
 
   PREFERRED_BROWSER="$(grep -s 'PREFERRED_BROWSER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER="chrome"
+  # [ -z "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER="chrome"
   [ -n "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER=("--cookies-from-browser" "$PREFERRED_BROWSER")
 
   NO_OF_SEARCH_RESULTS="$(grep -s 'NUMBER_OF_SEARCH_RESULTS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
