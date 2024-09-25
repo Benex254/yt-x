@@ -109,8 +109,8 @@ fzf-preview() {
 
     # 2. Use chafa with Sixel output
   elif command -v chafa >/dev/null; then
-    case "$(uname -a)" in
-    *ndroid) chafa -s "$dim" "$file" ;;
+    case "$PLATFORM" in
+    android) chafa -s "$dim" "$file" ;;
     *) chafa -f sixel -s "$dim" "$file" ;;
     esac
     # Add a new line character so that fzf can display multiple images in the preview window
@@ -205,7 +205,7 @@ launcher_with_preview() {
         init_pretty_print;
 
         title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
-        video=\$(echo \"\$search_results\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\")
+        video=\$(echo \"\$search_results\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\" 2>/dev/null)
 
         id=\$(echo \$video | jq '.id' -r);
 
@@ -275,10 +275,10 @@ prompt() {
 run_yt_dlp() {
   # clear
   if command -v "gum" &>/dev/null; then
-    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" --cookies-from-browser "$PREFERRED_BROWSER"
+    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" "${PREFERRED_BROWSER[@]}"
   else
     echo "Loading..."
-    yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" --cookies-from-browser "$PREFERRED_BROWSER"
+    yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" "${PREFERRED_BROWSER[@]}"
   fi
   # cat ./search.2.json
 
@@ -332,7 +332,7 @@ main() {
   esac
   unset action
 
-  titles=$(echo "$search_results" | jq '.entries[].title' -r)
+  titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
   [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images
   while true; do
     if [ "$ENABLE_PREVIEW" = "true" ]; then
@@ -359,7 +359,30 @@ main() {
       case "$media_action" in
       Watch)
         echo "${MAGENTA}Now watching:${RESET} $title"
-        mpv "$(echo "$video" | jq '.url' -r)"
+        url=$(echo "$video" | jq '.url' -r)
+        if ! [ "$PLAYER" = mpv ] || [ "$PLATFORM" = android ]; then
+          # url=$(yt-dlp "$url" -q --no-warnings -J 2>/dev/null | jq ".requested_formats| . as \$vid_formats|map(select(.height<=$VIDEO_QUALITY))|if isempty(.[]) then \$vid_formats else . end|.[0].url" -r 2>/dev/null)
+          url=$(yt-dlp "$url" -q --no-warnings --get-url --format "best[height<=$VIDEO_QUALITY]/best" 2>/dev/null | tail -n 1)
+          if ! [ "$?" = 0 ] || [ -z "$url" ]; then
+            echo No video format found
+            sleep 5
+            break
+          fi
+        fi
+        case "$PLATFORM" in
+        android)
+          case "$PLAYER" in
+          mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$url" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+          vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$url" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "$title" >/dev/null 2>&1 & ;;
+          esac
+          ;;
+        *)
+          case "$PLAYER" in
+          mpv) mpv "$url" ;;
+          vlc) vlc "$url" --video-title "$title" ;;
+          esac
+          ;;
+        esac
         ;;
       Like)
         echo $video
