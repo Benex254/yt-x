@@ -274,11 +274,7 @@ launcher_with_preview() {
 
         channel=\$(echo \"\$video\"| jq '.channel' -r);
 
-        seconds=\$(echo \"\$video\"| jq '.duration' -r);
-        minutes=\$((\${seconds:-0}/60));
-        [[ \$minutes -gt 59 ]] && hours=\$((\${minutes-:0}/60));
-        [[ -z \$hours ]] && duration=\"\$minutes mins\";
-        [[ -n \$hours ]] && duration=\"\$hours hrs\";
+        seconds=\$(echo \"\$video\"| jq 'if .duration==null then 0 elif .duration >=3600 then .duration/3600 else .duration/60 end|floor' -r);
         
         view_count=\$(echo \"\$video\"| jq '.view_count' -r);
         
