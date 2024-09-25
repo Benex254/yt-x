@@ -20,6 +20,13 @@ CLI_PREVIEW_IMAGES_CACHE_DIR="$CLI_CACHE_DIR/preview_images"
 [ -d "$CLI_CONFIG_DIR" ] || mkdir -p "$CLI_CONFIG_DIR"
 [ -d "$CLI_PREVIEW_IMAGES_CACHE_DIR" ] || mkdir -p "$CLI_PREVIEW_IMAGES_CACHE_DIR"
 
+case "$(uname -a)" in
+*ndroid) PLATFORM="android" ;;
+*Darwin*) PLATFORM="mac" ;;
+*MINGW* | *WSL2*) PLATFORM="windows" ;; # Windows OS
+*) PLATFORM="linux" ;;
+esac
+
 load_config() {
   PRETTY_PRINT="$(grep -s 'PRETTY_PRINT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
   [ -z "$PRETTY_PRINT" ] && PRETTY_PRINT="true"
