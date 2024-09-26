@@ -145,9 +145,10 @@ fzf-preview() {
 
   if [[ ! $type =~ image/ ]]; then
     # Sometimes bat is installed as batcat.
-    echo hmmm weird this should never be the case
-    echo for some reason the mime type for the given file is not an image
-    echo please report this to the devs
+    # echo hmmm weird this should never be the case
+    # echo for some reason the mime type for the given file is not an image
+    # echo please report this to the devs
+    echo Loading...
     return 1
   fi
 
@@ -283,7 +284,7 @@ launcher_with_preview() {
         
         description=\$(echo \"\$video\"| jq '.description' -r);
         
-        if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\";
+        if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
         else echo loading preview image...;
         fi
         echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
