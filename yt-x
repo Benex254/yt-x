@@ -334,15 +334,12 @@ prompt() {
   fi
 }
 run_yt_dlp() {
-  # clear
   if command -v "gum" &>/dev/null; then
     gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" "${PREFERRED_BROWSER[@]}"
   else
     echo "Loading..."
     yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" "${PREFERRED_BROWSER[@]}"
   fi
-  # cat ./search.2.json
-
 }
 
 core_dep_ch() {
@@ -354,7 +351,7 @@ main() {
   core_dep_ch
   clear
   if [ -z "$action" ]; then
-    action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nLiked Videos\nWatch History\nExit' | launcher "Select Action")"
+    action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nLiked Videos\nWatch History\nEdit Config\nExit' | launcher "Select Action")"
   fi
   [ "$action" = "Exit" ] && byebye
   case "$action" in
@@ -388,12 +385,22 @@ main() {
     url="https://www.youtube.com/feed/history"
     search_results=$(run_yt_dlp "$url")
     ;;
+  "Edit Config")
+    if command -v "$EDITOR" &>/dev/null; then
+      $EDITOR "$CLI_CONFIG_DIR/${CLI_NAME}.conf"
+    else
+      open "$CLI_CONFIG_DIR/${CLI_NAME}.conf"
+    fi
+    unset action
+    main
+    ;;
   Exit)
     byebye
     ;;
   *)
     echo invalid action
     sleep "$NOTIFICATION_DURATION"
+    unset action
     main
     ;;
   esac
