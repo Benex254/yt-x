@@ -234,8 +234,8 @@ launcher() {
 }
 download_preview_images() {
   echo Downloading images in the background...
-  ids="$(echo "$search_results" | jq '.entries[].id' -r)"
-  urls="$(echo "$search_results" | jq '.entries[].thumbnails[-1].url' -r)"
+  ids="$(echo "$search_results" | jq '.entries[].id' -r 2>/dev/null)"
+  urls="$(echo "$search_results" | jq '.entries[].thumbnails[-1].url' -r 2>/dev/null)"
 
   [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
