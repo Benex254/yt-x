@@ -27,53 +27,9 @@ case "$(uname -a)" in
 *) PLATFORM="linux" ;;
 esac
 
-load_config() {
-  PRETTY_PRINT="$(grep -s 'PRETTY_PRINT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$PRETTY_PRINT" ] && PRETTY_PRINT="true"
-
-  DISOWN_STREAMING_PROCESS="$(grep -s 'DISOWN_STREAMING_PROCESS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$DISOWN_STREAMING_PROCESS" ] && DISOWN_STREAMING_PROCESS="true"
-
-  PREFERRED_EDITOR="$(grep -s 'EDITOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$PREFERRED_EDITOR" ] && PREFERRED_EDITOR=${EDITOR:-open}
-
-  # YT_DLP_FORMAT="$(grep -s 'YT_DLP_FORMAT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-
-  PREFERRED_SELECTOR="$(grep -s 'PREFERRED_SELECTOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$PREFERRED_SELECTOR" ] && PREFERRED_SELECTOR="fzf"
-
-  VIDEO_QUALITY="$(grep -s 'VIDEO_QUALITY:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$VIDEO_QUALITY" ] && VIDEO_QUALITY=1080
-
-  ENABLE_PREVIEW="$(grep -s 'ENABLE_PREVIEW:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$ENABLE_PREVIEW" ] && ENABLE_PREVIEW="true"
-
-  UPDATE_RECENT="$(grep -s 'UPDATE_RECENT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$UPDATE_RECENT" ] && UPDATE_RECENT="true"
-
-  NO_OF_RECENT="$(grep -s 'NO_OF_RECENT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$NO_OF_RECENT" ] && NO_OF_RECENT=30
-
-  PLAYER="$(grep -s 'PLAYER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$PLAYER" ] && PLAYER='mpv'
-
-  PREFERRED_BROWSER="$(grep -s 'PREFERRED_BROWSER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  # [ -z "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER="chrome"
-  [ -n "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER=("--cookies-from-browser" "$PREFERRED_BROWSER")
-
-  NO_OF_SEARCH_RESULTS="$(grep -s 'NUMBER_OF_SEARCH_RESULTS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$NO_OF_SEARCH_RESULTS" ] && NO_OF_SEARCH_RESULTS=30
-
-  NOTIFICATION_DURATION="$(grep -s 'NOTIFICATION_DURATION:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$NOTIFICATION_DURATION" ] && NOTIFICATION_DURATION=5
-
-  DOWNLOAD_DIRECTORY="$(grep -s 'DOWNLOAD_DIRECTORY:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  [ -z "$DOWNLOAD_DIRECTORY" ] && DOWNLOAD_DIRECTORY="$HOME/Videos/$CLI_NAME"
-  [ -d "${DOWNLOAD_DIRECTORY/#\~\//$HOME/}" ] || mkdir -p "${DOWNLOAD_DIRECTORY/#\~\//$HOME/}"
-
-  if ! [ -f "$CLI_CONFIG_DIR/${CLI_NAME}.conf" ]; then
-    echo "\
-#    
+print_config() {
+  echo "\
+#
 #    ██╗░░░██╗████████╗░░░░░░██╗░░██╗  ░█████╗░░█████╗░███╗░░██╗███████╗██╗░██████╗░
 #    ╚██╗░██╔╝╚══██╔══╝░░░░░░╚██╗██╔╝  ██╔══██╗██╔══██╗████╗░██║██╔════╝██║██╔════╝░
 #    ░╚████╔╝░░░░██║░░░█████╗░╚███╔╝░  ██║░░╚═╝██║░░██║██╔██╗██║█████╗░░██║██║░░██╗░
@@ -94,7 +50,7 @@ PREFERRED_SELECTOR: $PREFERRED_SELECTOR
 # the quality of the video when streaming with a player other than mpv
 VIDEO_QUALITY: $VIDEO_QUALITY
 
-# whether to show previews
+# whether to show previews [true/false]
 # its cool so enable it
 ENABLE_PREVIEW: $ENABLE_PREVIEW
 
@@ -122,8 +78,53 @@ NOTIFICATION_DURATION: $NOTIFICATION_DURATION
 
 # where your downloads will be stored
 DOWNLOAD_DIRECTORY: $DOWNLOAD_DIRECTORY
-    " >"$CLI_CONFIG_DIR/${CLI_NAME}.conf"
-  fi
+"
+}
+load_config() {
+  PRETTY_PRINT="$(grep -s 'PRETTY_PRINT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PRETTY_PRINT" ] && PRETTY_PRINT="true"
+
+  DISOWN_STREAMING_PROCESS="$(grep -s 'DISOWN_STREAMING_PROCESS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$DISOWN_STREAMING_PROCESS" ] && DISOWN_STREAMING_PROCESS="true"
+
+  PREFERRED_EDITOR="$(grep -s 'EDITOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PREFERRED_EDITOR" ] && PREFERRED_EDITOR=${EDITOR:-open}
+
+  # YT_DLP_FORMAT="$(grep -s 'YT_DLP_FORMAT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+
+  PREFERRED_SELECTOR="$(grep -s 'PREFERRED_SELECTOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PREFERRED_SELECTOR" ] && PREFERRED_SELECTOR="fzf"
+
+  VIDEO_QUALITY="$(grep -s 'VIDEO_QUALITY:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$VIDEO_QUALITY" ] && VIDEO_QUALITY=1080
+
+  ENABLE_PREVIEW="$(grep -s 'ENABLE_PREVIEW:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$ENABLE_PREVIEW" ] && ENABLE_PREVIEW="false"
+
+  UPDATE_RECENT="$(grep -s 'UPDATE_RECENT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$UPDATE_RECENT" ] && UPDATE_RECENT="true"
+
+  NO_OF_RECENT="$(grep -s 'NO_OF_RECENT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$NO_OF_RECENT" ] && NO_OF_RECENT=30
+
+  PLAYER="$(grep -s 'PLAYER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$PLAYER" ] && PLAYER='mpv'
+
+  PREFERRED_BROWSER="$(grep -s 'PREFERRED_BROWSER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  # [ -z "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER="chrome"
+  [ -n "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER=("--cookies-from-browser" "$PREFERRED_BROWSER")
+
+  NO_OF_SEARCH_RESULTS="$(grep -s 'NUMBER_OF_SEARCH_RESULTS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$NO_OF_SEARCH_RESULTS" ] && NO_OF_SEARCH_RESULTS=30
+
+  NOTIFICATION_DURATION="$(grep -s 'NOTIFICATION_DURATION:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$NOTIFICATION_DURATION" ] && NOTIFICATION_DURATION=5
+
+  DOWNLOAD_DIRECTORY="$(grep -s 'DOWNLOAD_DIRECTORY:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -z "$DOWNLOAD_DIRECTORY" ] && DOWNLOAD_DIRECTORY="$HOME/Videos/$CLI_NAME"
+  [ -d "${DOWNLOAD_DIRECTORY/#\~\//$HOME/}" ] || mkdir -p "${DOWNLOAD_DIRECTORY/#\~\//$HOME/}"
+
+  ! [ -f "$CLI_CONFIG_DIR/${CLI_NAME}.conf" ] && print_config >"$CLI_CONFIG_DIR/${CLI_NAME}.conf"
 
   ROFI_THEME="$(grep -s 'ROFI_THEME:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
 
