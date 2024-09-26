@@ -136,7 +136,7 @@ DOWNLOAD_DIRECTORY: $DOWNLOAD_DIRECTORY
     --marker=">" --pointer="◆" --separator="─" --scrollbar="│"
   '}
   init_pretty_print
-  export FZF_DEFAULT_OPTS PRETTY_PRINT
+  export FZF_DEFAULT_OPTS PRETTY_PRINT PLATFORM
 }
 fzf-preview() {
 
