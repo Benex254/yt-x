@@ -397,7 +397,7 @@ handle_playlist() {
   search_results=$(run_yt_dlp "$url")
   return 0
 }
-channels() {
+channels_explorer() {
   if [ -z "$channel" ]; then
     get_channels_data
     channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
@@ -405,16 +405,16 @@ channels() {
     export SHELL CLI_CONFIG_DIR
     export -f init_pretty_print fzf-preview get_channels_data
     channel_name=$(printf "%s\nMain Menu\nExit" "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
-    [ "$channel_name" = "Exit" ] && byebye
-    [ "$channel_name" = "Main Menu" ] && main
     channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+    [ "$channel_name" = "Exit" ] && byebye
+    [ "$channel_name" = "Main Menu" ] && unset action && main && return 0
     channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
   fi
   # if [ -z "$channel_action" ]; then
   channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nBack\nExit' | launcher "Select Action")"
   # fi
   [ "$channel_action" = "Exit" ] && byebye
-  [ "$channel_action" = "Back" ] && unset channel && channels
+  [ "$channel_action" = "Back" ] && unset channel && channels_explorer
   uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
 
   case "$channel_action" in
@@ -483,7 +483,7 @@ main() {
     ;;
   Channels)
     unset channel
-    channels
+    channels_explorer
     ;;
   "Liked Videos")
     url="https://www.youtube.com/playlist?list=LL"
