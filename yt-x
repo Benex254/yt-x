@@ -314,7 +314,7 @@ core_dep_ch() {
 }
 trap byebye INT TERM
 PREVIEW_SCRIPT_FOR_VIDEOS="
-  if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
+  if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Back\" ] && ! [ {} = \"Main Menu\" ];then
     init_pretty_print;
 
     title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
@@ -348,7 +348,7 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
   fi;
 "
 PREVIEW_SCRIPT_FOR_CHANNELS="
-  if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
+  if ! [ -z {} ] && ! [ {} = \"Back\" ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
     init_pretty_print;
     get_channels_data
 
@@ -395,6 +395,7 @@ handle_playlist() {
   playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
   url="$(echo "$playlist" | jq '.url' -r)"
   search_results=$(run_yt_dlp "$url")
+  return 0
 }
 channels() {
   if [ -z "$channel" ]; then
@@ -410,7 +411,7 @@ channels() {
     channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
   fi
   # if [ -z "$channel_action" ]; then
-  channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nChannels\nBack\nExit' | launcher "Select Action")"
+  channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nBack\nExit' | launcher "Select Action")"
   # fi
   [ "$channel_action" = "Exit" ] && byebye
   [ "$channel_action" = "Back" ] && unset channel && channels
@@ -420,6 +421,7 @@ channels() {
   Videos)
     url="$uploader_url_base/videos"
     search_results=$(run_yt_dlp "$url")
+    BACK="channels"
     ;;
   Featured)
     playlist_url="$uploader_url_base/featured"
@@ -438,6 +440,7 @@ channels() {
     search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
     url="$uploader_url_base/search?query=$search_Term"
     search_results=$(run_yt_dlp "$url")
+    BACK="channels"
     ;;
   Exit)
     byebye
@@ -448,6 +451,7 @@ channels() {
     main
     ;;
   esac
+  return 0
 }
 main() {
   core_dep_ch
