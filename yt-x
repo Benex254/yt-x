@@ -349,7 +349,7 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
     else echo loading preview image...;
     fi
     echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
-    echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title' -r)\";
+    echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title|split(\"\\t\")|.[-1]' -r)\";
     echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
     echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
     echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
@@ -544,6 +544,7 @@ main() {
   SHELL="bash"
   DOWNLOAD_IMAGES=0
   while true; do
+    search_results=$(echo "$search_results" | jq '.entries=(.entries | to_entries| map(.value.title="\(.key+1)\t"+.value.title) |map(.value))')
     titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
     [ "$ENABLE_PREVIEW" = "true" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
     export search_results SHELL
@@ -560,6 +561,7 @@ main() {
     [ "$title" = "Exit" ] && byebye
 
     video="$(echo "$search_results" | jq ".entries|map(select(.title == \"$title\"))|.[0]")"
+    title=$(echo "$video" | jq '.title|split("\t")|.[-1]' -r)
 
     while true; do
       if [ -z "$media_action" ]; then
