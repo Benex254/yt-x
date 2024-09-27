@@ -327,7 +327,18 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
 
     duration=\$(echo \"\$video\"| jq 'try if .duration>=3600 then .duration/3600|floor|tostring + \" hours\" else .duration/60|floor|tostring + \" mins\" end catch \"Unknown\" ' -r);
     
-    view_count=\$(echo \"\$video\"| jq '.view_count' -r);
+    view_count=\$(echo \"\$video\"| jq -r '
+    .view_count
+    |tostring
+    |split(\"\")
+    |reverse
+    |join(\"\")
+    |gsub(\"(?<thousands>[0-9]\\{3})(?=[0-9])\"; \"\\(.thousands),\")
+    |split(\"\")
+    |reverse
+    |join(\"\")
+    '
+    );
     
     live_status=\$(echo \"\$video\"| jq '.live_status' -r);
     [ \"\$live_status\" = \"null\" ] && live_status='false' 
@@ -360,7 +371,18 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
 
     channel=\$(echo \"\$video\"| jq '.channel' -r);
 
-    channel_follower_count=\$(echo \"\$video\"| jq '.channel_follower_count' -r);
+    channel_follower_count=\$(echo \"\$video\"| jq -r '
+    .channel_follower_count
+    |tostring
+    |split(\"\")
+    |reverse
+    |join(\"\")
+    |gsub(\"(?<thousands>[0-9]\\{3})(?=[0-9])\"; \"\\(.thousands),\")
+    |split(\"\")
+    |reverse
+    |join(\"\")
+    '
+    );
     
     description=\$(echo \"\$video\"| jq '.description' -r);
     
