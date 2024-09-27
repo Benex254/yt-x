@@ -354,7 +354,7 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
     echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
     echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
     echo \"\${MAGENTA}\${BOLD}Live Status: \${RESET}\$live_status\";
-    echo \"\${MAGENTA}\${BOLD}Description: \${RESET}\$description\";
+    echo -e \"\${MAGENTA}\${BOLD}Description:\n \${RESET}\$description\";
   else
     echo Loading...;
   fi;
@@ -392,7 +392,7 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
     echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
     echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
     echo \"\${MAGENTA}\${BOLD}Channel Follower Count: \${RESET}\$channel_follower_count followers\";
-    echo \"\${MAGENTA}\${BOLD}Description: \${RESET}\$description\";
+    echo -e \"\${MAGENTA}\${BOLD}Description:\n \${RESET}\$description\";
   else
     echo Loading...;
   fi;
