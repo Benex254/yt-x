@@ -235,18 +235,17 @@ launcher() {
 }
 download_preview_images() {
   echo Downloading images in the background...
-  ids="$(echo "$search_results" | jq '.entries[].id' -r 2>/dev/null)"
-  urls="$(echo "$search_results" | jq '.entries[].thumbnails[-1].url' -r 2>/dev/null)"
+  ids="$(echo "$1" | jq '.entries[].id' -r 2>/dev/null)"
+  urls="$(echo "$1" | jq '.entries[].thumbnails[-1].url' -r 2>/dev/null)"
 
   [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
-    echo "url = \"$(echo "$urls" | head -n $i | tail -n 1)\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+    echo "url = \"${2}$(echo "$urls" | head -n $i | tail -n 1)\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
     echo "output = \"$CLI_PREVIEW_IMAGES_CACHE_DIR/$(echo "$ids" | head -n $i | tail -n 1).jpg\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   done
   curl -s -K "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" &
 }
 launcher_with_preview() {
-  # clear
   case "${PREFERRED_SELECTOR,,}" in
   rofi)
     if [ -z "$ROFI_THEME" ]; then
@@ -265,40 +264,7 @@ launcher_with_preview() {
       --preview-window=left,35%,wrap --bind=right:accept \
       --expect=shift-left,shift-right --tabstop=1 \
       --cycle --exact \
-      --ansi --preview="\
-      if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
-        init_pretty_print;
-
-        title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
-        video=\$(echo \"\$search_results\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\" 2>/dev/null)
-
-        id=\$(echo \$video | jq '.id' -r);
-
-        channel=\$(echo \"\$video\"| jq '.channel' -r);
-
-        duration=\$(echo \"\$video\"| jq 'try if .duration>=3600 then .duration/3600|floor|tostring + \" hours\" else .duration/60|floor|tostring + \" mins\" end catch \"Unknown\" ' -r);
-        
-        view_count=\$(echo \"\$video\"| jq '.view_count' -r);
-        
-        live_status=\$(echo \"\$video\"| jq '.live_status' -r);
-        [ \"\$live_status\" = \"null\" ] && live_status='false' 
-        
-        description=\$(echo \"\$video\"| jq '.description' -r);
-        
-        if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
-        else echo loading preview image...;
-        fi
-        echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
-        echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title' -r)\";
-        echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
-        echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
-        echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
-        echo \"\${MAGENTA}\${BOLD}Live Status: \${RESET}\$live_status\";
-        echo \"\${MAGENTA}\${BOLD}Description: \${RESET}\$description\";
-      else
-        echo Loading...;
-      fi;
-      "
+      --ansi --preview="$2"
     ;;
   esac
 
@@ -347,13 +313,128 @@ core_dep_ch() {
   ! command -v "jq" &>/dev/null && echo jq is not installed and is a core dep please install it to proceed && exit 1
 }
 trap byebye INT TERM
+PREVIEW_SCRIPT_FOR_VIDEOS="
+  if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
+    init_pretty_print;
+
+    title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
+    video=\$(echo \"\$search_results\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\" 2>/dev/null)
+
+    id=\$(echo \$video | jq '.id' -r);
+
+    channel=\$(echo \"\$video\"| jq '.channel' -r);
+
+    duration=\$(echo \"\$video\"| jq 'try if .duration>=3600 then .duration/3600|floor|tostring + \" hours\" else .duration/60|floor|tostring + \" mins\" end catch \"Unknown\" ' -r);
+    
+    view_count=\$(echo \"\$video\"| jq '.view_count' -r);
+    
+    live_status=\$(echo \"\$video\"| jq '.live_status' -r);
+    [ \"\$live_status\" = \"null\" ] && live_status='false' 
+    
+    description=\$(echo \"\$video\"| jq '.description' -r);
+    
+    if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
+    else echo loading preview image...;
+    fi
+    echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
+    echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title' -r)\";
+    echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
+    echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
+    echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
+    echo \"\${MAGENTA}\${BOLD}Live Status: \${RESET}\$live_status\";
+    echo \"\${MAGENTA}\${BOLD}Description: \${RESET}\$description\";
+  else
+    echo Loading...;
+  fi;
+"
+PREVIEW_SCRIPT_FOR_CHANNELS="
+  if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
+    init_pretty_print;
+    get_channels_data
+
+    title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
+    video=\$(echo \"\$channels_data\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\" 2>/dev/null)
+
+    id=\$(echo \$video | jq '.id' -r);
+
+    channel=\$(echo \"\$video\"| jq '.channel' -r);
+
+    channel_follower_count=\$(echo \"\$video\"| jq '.channel_follower_count' -r);
+    
+    description=\$(echo \"\$video\"| jq '.description' -r);
+    
+    if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
+    else echo loading preview image...;
+    fi
+    echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
+    echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
+    echo \"\${MAGENTA}\${BOLD}Channel Follower Count: \${RESET}\$channel_follower_count followers\";
+    echo \"\${MAGENTA}\${BOLD}Description: \${RESET}\$description\";
+  else
+    echo Loading...;
+  fi;
+"
+force_update=0
+get_channels_data() {
+  if [ -f "$CLI_CONFIG_DIR/subscriptions.json" ] && ! [ "$force_update" = "1" ]; then
+    channels_data=$(cat "$CLI_CONFIG_DIR/subscriptions.json")
+  else
+    channels_data=$(yt-dlp "https://www.youtube.com/feed/channels" --flat-playlist --cookies-from-browser chrome -J)
+    [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$channels_data" "https:"
+    echo "$channels_data" >"$CLI_CONFIG_DIR/subscriptions.json"
+  fi
+}
+channels() {
+  get_channels_data
+  channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
+  SHELL="bash"
+  export SHELL CLI_CONFIG_DIR
+  export -f init_pretty_print fzf-preview get_channels_data
+  channel_name=$(echo "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
+  channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+  channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
+  if [ -z "$channel_action" ]; then
+    channel_action="$(printf 'Videos\nFeatured\nSearch\nExit' | launcher "Select Action")"
+  fi
+  [ "$action" = "Exit" ] && byebye
+  uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
+
+  case "$channel_action" in
+  Videos)
+    url="$uploader_url_base/videos"
+    search_results=$(run_yt_dlp "$url")
+    ;;
+  Featured)
+    # url="$uploader_url_base/featured"
+    # search_results=$(run_yt_dlp "$url")
+    channels_featured
+    ;;
+  Search)
+    clear
+    search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
+    url="$uploader_url_base/search?query=$search_Term"
+    search_results=$(run_yt_dlp "$url")
+    ;;
+  Exit)
+    byebye
+    ;;
+  *)
+    echo invalid action
+    sleep "$NOTIFICATION_DURATION"
+    unset action
+    main
+    ;;
+  esac
+  unset channel_action
+}
 main() {
   core_dep_ch
   clear
   if [ -z "$action" ]; then
-    action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nLiked Videos\nWatch History\nEdit Config\nExit' | launcher "Select Action")"
+    action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nChannels\nLiked Videos\nWatch History\nEdit Config\nExit' | launcher "Select Action")"
   fi
   [ "$action" = "Exit" ] && byebye
+
   case "$action" in
   "Your Feed")
     url="https://www.youtube.com"
@@ -372,6 +453,9 @@ main() {
   "Subscription Feed")
     url="https://www.youtube.com/feed/subscriptions"
     search_results=$(run_yt_dlp "$url")
+    ;;
+  Channels)
+    channels
     ;;
   "Liked Videos")
     url="https://www.youtube.com/playlist?list=LL"
@@ -407,13 +491,12 @@ main() {
   unset action
 
   titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
-  [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images
+  [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$search_results" ""
   while true; do
+    export search_results SHELL
+    export -f init_pretty_print fzf-preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
-      SHELL="bash"
-      export search_results SHELL
-      export -f init_pretty_print fzf-preview
-      title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" | tr -d '\n')"
+      title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n')"
     else
       title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher "select video")"
     fi
