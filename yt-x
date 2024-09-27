@@ -421,7 +421,7 @@ channels_explorer() {
   Videos)
     url="$uploader_url_base/videos"
     search_results=$(run_yt_dlp "$url")
-    BACK="channels"
+    BACK="channels_explorer"
     ;;
   Featured)
     playlist_url="$uploader_url_base/featured"
@@ -440,7 +440,7 @@ channels_explorer() {
     search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
     url="$uploader_url_base/search?query=$search_Term"
     search_results=$(run_yt_dlp "$url")
-    BACK="channels"
+    BACK="channels_explorer"
     ;;
   Exit)
     byebye
