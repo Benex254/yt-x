@@ -519,10 +519,10 @@ main() {
   unset action
 
   SHELL="bash"
-  REDOWNLOAD=1
+  DOWNLOAD_IMAGES=0
   while true; do
     titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
-    [ "$ENABLE_PREVIEW" = "true" ] && [ "$REDOWNLOAD" = 0 ] && download_preview_images "$search_results" "" && REDOWNLOAD=1
+    [ "$ENABLE_PREVIEW" = "true" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
     export search_results SHELL
     export -f init_pretty_print fzf-preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
@@ -533,7 +533,7 @@ main() {
     clear
     title="$(echo "$title" | sed 's/"/\\"/g')"
     [ "$title" = "Main Menu" ] && break
-    [ "$title" = "Back" ] && $BACK && REDOWNLOAD=0 && continue
+    [ "$title" = "Back" ] && $BACK && DOWNLOAD_IMAGES=0 && continue
     [ "$title" = "Exit" ] && byebye
 
     video="$(echo "$search_results" | jq ".entries|map(select(.title == \"$title\"))|.[0]")"
@@ -577,10 +577,12 @@ main() {
         exit
         ;;
       "Subscribe to Channel")
-        mpv "$(echo "$video" | jq '.url' -r)"
+        # TODO: use youtube api to enable video subscriptions
+        command ...
         ;;
       "Visit Channel")
-        mpv "$(echo "$video" | jq '.url' -r)"
+        # TODO: use youtube api to enable video subscriptions
+        command ...
         ;;
       "Open in Browser")
         open "$(echo "$video" | jq '.url' -r)"
