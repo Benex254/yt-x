@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#A script written by BeneX-254 in September 2024 under MIT LICENSE
 
 CLI_HEADER='
 ██╗░░░██╗████████╗░░░░░░██╗░░██╗
@@ -632,11 +633,15 @@ Options:
     edit $CLI_NAME config file
   --rofi-theme <path>
     set the path to your rofi config file
-  -d, --disown-streaming-process
+  --disown-streaming-process
     disown the streaming process so you can contine streaming even if you close $CLI_NAME
-  -D, --no-disown-streaming-process
+  --no-disown-streaming-process
     don't disown the streaming process
-  -p <selector>,--preferred-selector <selector>
+  --disown-downloading-process
+    disown the downloading process so you can contine streaming even if you close $CLI_NAME
+  --no-disown-downloading-process
+    don't disown the downloading process
+  -p <selector>,--preferred-selector <selector> [fzf/rofi]
     set the preferred selector for $CLI_NAME to use
   --preview
     enable the preview window
@@ -683,20 +688,23 @@ while [ $# -gt 0 ]; do
     PREFERRED_SELECTOR="$2"
     shift
     ;;
-  --private)
-    UPDATE_RECENT="false"
-    ;;
   --preview)
     ENABLE_PREVIEW="true"
     ;;
   --no-preview)
     ENABLE_PREVIEW="false"
     ;;
-  -d | --disown-reading-process)
+  --disown-streaming-process)
     DISOWN_STREAMING_PROCESS="true"
     ;;
-  -D | --no-disown-reading-process)
+  --no-disown-streaming-process)
     DISOWN_STREAMING_PROCESS="false"
+    ;;
+  --disown-downloading-process)
+    DISOWN_DOWNLOADING_PROCESS="true"
+    ;;
+  --no-disown-downloading-process)
+    DISOWN_DOWNLOADING_PROCESS="false"
     ;;
   --rofi-theme)
     [ -n "$2" ] || usage 1
