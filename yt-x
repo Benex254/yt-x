@@ -508,6 +508,7 @@ main() {
 
   titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
   [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$search_results" ""
+  SHELL="bash"
   while true; do
     export search_results SHELL
     export -f init_pretty_print fzf-preview
