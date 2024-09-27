@@ -389,25 +389,31 @@ get_channels_data() {
 handle_playlist() {
   playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
 
-  playlist_title=$(echo "$playlist_video_titles" | launcher "Select Playlist")
+  playlist_title=$(printf "%s\nBack" "$playlist_video_titles" | launcher "Select Playlist")
+  [ "$playlist_title" = "Back" ] && channels
   playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
   playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
   url="$(echo "$playlist" | jq '.url' -r)"
   search_results=$(run_yt_dlp "$url")
 }
 channels() {
-  get_channels_data
-  channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
-  SHELL="bash"
-  export SHELL CLI_CONFIG_DIR
-  export -f init_pretty_print fzf-preview get_channels_data
-  channel_name=$(echo "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
-  channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
-  channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
-  if [ -z "$channel_action" ]; then
-    channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nExit' | launcher "Select Action")"
+  if [ -z "$channel" ]; then
+    get_channels_data
+    channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
+    SHELL="bash"
+    export SHELL CLI_CONFIG_DIR
+    export -f init_pretty_print fzf-preview get_channels_data
+    channel_name=$(printf "%s\nMain Menu\nExit" "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
+    [ "$channel_name" = "Exit" ] && byebye
+    [ "$channel_name" = "Main Menu" ] && main
+    channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+    channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
   fi
-  [ "$action" = "Exit" ] && byebye
+  # if [ -z "$channel_action" ]; then
+  channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nChannels\nBack\nExit' | launcher "Select Action")"
+  # fi
+  [ "$channel_action" = "Exit" ] && byebye
+  [ "$channel_action" = "Back" ] && unset channel && channels
   uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
 
   case "$channel_action" in
@@ -419,11 +425,13 @@ channels() {
     playlist_url="$uploader_url_base/featured"
     playlist_results=$(run_yt_dlp "$playlist_url")
     handle_playlist
+    BACK="handle_playlist"
     ;;
   Playlists)
     playlist_url="$uploader_url_base/playlists"
     playlist_results=$(run_yt_dlp "$playlist_url")
     handle_playlist
+    BACK="handle_playlist"
     ;;
   Search)
     clear
@@ -435,13 +443,11 @@ channels() {
     byebye
     ;;
   *)
-    echo invalid action
+    echo invalid channel action
     sleep "$NOTIFICATION_DURATION"
-    unset action
     main
     ;;
   esac
-  unset channel_action
 }
 main() {
   core_dep_ch
@@ -451,6 +457,7 @@ main() {
   fi
   [ "$action" = "Exit" ] && byebye
 
+  BACK="break"
   case "$action" in
   "Your Feed")
     url="https://www.youtube.com"
@@ -471,6 +478,7 @@ main() {
     search_results=$(run_yt_dlp "$url")
     ;;
   Channels)
+    unset channel
     channels
     ;;
   "Liked Videos")
@@ -506,20 +514,22 @@ main() {
   esac
   unset action
 
-  titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
-  [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$search_results" ""
   SHELL="bash"
+  REDOWNLOAD=1
   while true; do
+    titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
+    [ "$ENABLE_PREVIEW" = "true" ] && [ "$REDOWNLOAD" = 0 ] && download_preview_images "$search_results" "" && REDOWNLOAD=1
     export search_results SHELL
     export -f init_pretty_print fzf-preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
-      title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n')"
+      title="$(printf "%s\nBack\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n')"
     else
-      title="$(printf "%s\nMain Menu\nExit" "$titles" | launcher "select video")"
+      title="$(printf "%s\nBack\nMain Menu\nExit" "$titles" | launcher "select video")"
     fi
     clear
     title="$(echo "$title" | sed 's/"/\\"/g')"
     [ "$title" = "Main Menu" ] && break
+    [ "$title" = "Back" ] && $BACK && REDOWNLOAD=0 && continue
     [ "$title" = "Exit" ] && byebye
 
     video="$(echo "$search_results" | jq ".entries|map(select(.title == \"$title\"))|.[0]")"
