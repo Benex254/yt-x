@@ -379,10 +379,21 @@ get_channels_data() {
   if [ -f "$CLI_CONFIG_DIR/subscriptions.json" ] && ! [ "$force_update" = "1" ]; then
     channels_data=$(cat "$CLI_CONFIG_DIR/subscriptions.json")
   else
+    echo Loading subscriptions...
     channels_data=$(yt-dlp "https://www.youtube.com/feed/channels" --flat-playlist --cookies-from-browser chrome -J)
     [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$channels_data" "https:"
     echo "$channels_data" >"$CLI_CONFIG_DIR/subscriptions.json"
+    clear
   fi
+}
+handle_playlist() {
+  playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
+
+  playlist_title=$(echo "$playlist_video_titles" | launcher "Select Playlist")
+  playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+  playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
+  url="$(echo "$playlist" | jq '.url' -r)"
+  search_results=$(run_yt_dlp "$url")
 }
 channels() {
   get_channels_data
@@ -394,7 +405,7 @@ channels() {
   channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
   channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
   if [ -z "$channel_action" ]; then
-    channel_action="$(printf 'Videos\nFeatured\nSearch\nExit' | launcher "Select Action")"
+    channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nExit' | launcher "Select Action")"
   fi
   [ "$action" = "Exit" ] && byebye
   uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
@@ -405,9 +416,14 @@ channels() {
     search_results=$(run_yt_dlp "$url")
     ;;
   Featured)
-    # url="$uploader_url_base/featured"
-    # search_results=$(run_yt_dlp "$url")
-    channels_featured
+    playlist_url="$uploader_url_base/featured"
+    playlist_results=$(run_yt_dlp "$playlist_url")
+    handle_playlist
+    ;;
+  Playlists)
+    playlist_url="$uploader_url_base/playlists"
+    playlist_results=$(run_yt_dlp "$playlist_url")
+    handle_playlist
     ;;
   Search)
     clear
