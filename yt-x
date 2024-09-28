@@ -312,6 +312,7 @@ run_yt_dlp() {
 core_dep_ch() {
   ! command -v "yt-dlp" &>/dev/null && echo yt-dlp is not installed and is a core dep please install it to proceed && exit 1
   ! command -v "jq" &>/dev/null && echo jq is not installed and is a core dep please install it to proceed && exit 1
+  ! command -v "fzf" &>/dev/null && echo fzf is not installed and is a core dep please install it to proceed && exit 1
 }
 trap byebye INT TERM
 PREVIEW_SCRIPT_FOR_VIDEOS="
