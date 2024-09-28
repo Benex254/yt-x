@@ -545,7 +545,7 @@ main() {
   SHELL="bash"
   DOWNLOAD_IMAGES=0
   while true; do
-    search_results=$(echo "$search_results" | jq '.entries=(.entries | to_entries| map(.value.title="\(.key+1)\t"+.value.title) |map(.value))')
+    [ "$DOWNLOAD_IMAGES" = 0 ] && search_results=$(echo "$search_results" | jq '.entries=(.entries | to_entries| map(.value.title="\(.key+1)\t"+.value.title) |map(.value))')
     titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
     [ "$ENABLE_PREVIEW" = "true" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
     export search_results SHELL
