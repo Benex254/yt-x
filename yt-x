@@ -414,7 +414,7 @@ handle_playlist() {
   playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
 
   playlist_title=$(printf "%s\nBack" "$playlist_video_titles" | launcher "Select Playlist")
-  [ "$playlist_title" = "Back" ] && channels
+  [ "$playlist_title" = "Back" ] && channels_explorer
   playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
   playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
   url="$(echo "$playlist" | jq '.url' -r)"
