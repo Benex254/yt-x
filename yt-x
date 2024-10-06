@@ -630,6 +630,7 @@ ${CYAN}${RESET}  Play All
 ${CYAN}${RESET}  Like
 ${CYAN}󰵀${RESET}  Subscribe to Channel
 ${CYAN}󱑤${RESET}  Download
+${CYAN}󰦗${RESET}  Download All
 ${CYAN}󰌍${RESET}  Back
 ${CYAN}${RESET}  Main Menu
 ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
@@ -639,6 +640,9 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
       case "$media_action" in
       "Play All")
         mpv "$url"
+        ;;
+      "Download All")
+        yt-dlp "$url"
         ;;
       Watch)
         echo "${MAGENTA}Now watching:${RESET} $title"
