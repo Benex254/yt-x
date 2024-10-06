@@ -353,7 +353,7 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
     echo
 
     echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
-    echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title|split(\"\\t\")|.[-1]' -r)\";
+    echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title' -r|sed 's/^.. //g')\";
     echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
     echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
     echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
@@ -362,7 +362,9 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
     ll=1
     while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
     echo
-    echo -e \"\$description\";
+    if command -v glow&>/dev/null;then echo -e \"\$description\"|glow;
+    else echo -e \"\$description\";
+    fi
   else
     echo Loading...;
   fi;
@@ -505,12 +507,14 @@ main() {
     action="$(printf "\
 ${CYAN}${RESET}  Your Feed
 ${CYAN}${RESET}  Trending
+${CYAN}󰐑${RESET}  Playlists
 ${CYAN}${RESET}  Search
-${CYAN}${RESET}  Watch Later
-${CYAN}${RESET}  Subscription Feed
+${CYAN}${RESET}  Watch Later
+${CYAN}󰵀${RESET}  Subscription Feed
 ${CYAN}󰑈${RESET}  Channels
 ${CYAN}${RESET}  Liked Videos
 ${CYAN}${RESET}  Watch History
+${CYAN}${RESET}  Clips
 ${CYAN}${RESET}  Edit Config
 ${RED}󰈆${RESET}  Exit
 " | launcher "Select Action" | sed 's/.*  //g')"
@@ -523,11 +527,11 @@ ${RED}󰈆${RESET}  Exit
     url="https://www.youtube.com"
     search_results=$(run_yt_dlp "$url")
     ;;
-  "Trending")
+  Trending)
     url="https://www.youtube.com/feed/trending"
     search_results=$(run_yt_dlp "$url")
     ;;
-  "Search")
+  Search)
     clear
     search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
     url="https://www.youtube.com/results?search_query=$search_Term&sp=EgIQAQ%253D%253D"
@@ -535,6 +539,10 @@ ${RED}󰈆${RESET}  Exit
     ;;
   "Subscription Feed")
     url="https://www.youtube.com/feed/subscriptions"
+    search_results=$(run_yt_dlp "$url")
+    ;;
+  Playlists)
+    url="https://www.youtube.com/feed/playlists"
     search_results=$(run_yt_dlp "$url")
     ;;
   Channels)
@@ -551,6 +559,10 @@ ${RED}󰈆${RESET}  Exit
     ;;
   "Watch History")
     url="https://www.youtube.com/feed/history"
+    search_results=$(run_yt_dlp "$url")
+    ;;
+  Clips)
+    url="https://www.youtube.com/feed/clips"
     search_results=$(run_yt_dlp "$url")
     ;;
   "Edit Config")
