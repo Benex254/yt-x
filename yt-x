@@ -228,7 +228,7 @@ launcher() {
       --height=100% \
       --prompt="${1}: " \
       --header-first --header="$CLI_HEADER" \
-      --exact --cycle
+      --exact --cycle --ansi
     ;;
   esac
 
@@ -315,7 +315,7 @@ core_dep_ch() {
 }
 trap byebye INT TERM
 PREVIEW_SCRIPT_FOR_VIDEOS="
-  if ! [ -z {} ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Back\" ] && ! [ {} = \"Main Menu\" ];then
+  if ! [ -z {} ] && [[ {} =~ ^[0-9][0-9].* ]];then
     init_pretty_print;
 
     title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
@@ -348,13 +348,21 @@ PREVIEW_SCRIPT_FOR_VIDEOS="
     if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
     else echo loading preview image...;
     fi
+    ll=1
+    while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
+    echo
+
     echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
     echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title|split(\"\\t\")|.[-1]' -r)\";
     echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
     echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
     echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
     echo \"\${MAGENTA}\${BOLD}Live Status: \${RESET}\$live_status\";
-    echo -e \"\${MAGENTA}\${BOLD}Description:\n \${RESET}\$description\";
+
+    ll=1
+    while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
+    echo
+    echo -e \"\$description\";
   else
     echo Loading...;
   fi;
@@ -389,10 +397,16 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
     if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
     else echo loading preview image...;
     fi
+
+    ll=1
+    while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
     echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
     echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
     echo \"\${MAGENTA}\${BOLD}Channel Follower Count: \${RESET}\$channel_follower_count followers\";
-    echo -e \"\${MAGENTA}\${BOLD}Description:\n \${RESET}\$description\";
+
+    ll=1
+    while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
+    echo -e \"\$description\";
   else
     echo Loading...;
   fi;
@@ -435,7 +449,14 @@ channels_explorer() {
     channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
   fi
   # if [ -z "$channel_action" ]; then
-  channel_action="$(printf 'Videos\nFeatured\nSearch\nPlaylists\nBack\nExit' | launcher "Select Action")"
+  channel_action="$(printf "\
+${CYAN}${RESET}  Videos
+${CYAN}󰩉${RESET}  Featured
+${CYAN}${RESET}  Search
+${CYAN}󰐑${RESET}  Playlists
+${CYAN}󰌍${RESET}  Back
+${RED}󰈆${RESET}  Exit
+" | launcher "Select Action" | sed 's/.  //g')"
   # fi
   [ "$channel_action" = "Exit" ] && byebye
   [ "$channel_action" = "Back" ] && unset channel && channels_explorer
@@ -481,7 +502,18 @@ main() {
   core_dep_ch
   clear
   if [ -z "$action" ]; then
-    action="$(printf 'Your Feed\nTrending\nSearch\nWatch Later\nSubscription Feed\nChannels\nLiked Videos\nWatch History\nEdit Config\nExit' | launcher "Select Action")"
+    action="$(printf "\
+${CYAN}${RESET}  Your Feed
+${CYAN}${RESET}  Trending
+${CYAN}${RESET}  Search
+${CYAN}${RESET}  Watch Later
+${CYAN}${RESET}  Subscription Feed
+${CYAN}󰑈${RESET}  Channels
+${CYAN}${RESET}  Liked Videos
+${CYAN}${RESET}  Watch History
+${CYAN}${RESET}  Edit Config
+${RED}󰈆${RESET}  Exit
+" | launcher "Select Action" | sed 's/.*  //g')"
   fi
   [ "$action" = "Exit" ] && byebye
 
@@ -545,13 +577,19 @@ main() {
   SHELL="bash"
   DOWNLOAD_IMAGES=0
   while true; do
-    [ "$DOWNLOAD_IMAGES" = 0 ] && search_results=$(echo "$search_results" | jq '.entries=(.entries | to_entries| map(.value.title="\(.key+1)\t"+.value.title) |map(.value))')
+    [ "$DOWNLOAD_IMAGES" = 0 ] &&
+      search_results=$(echo "$search_results" | jq "
+          .entries=(.entries 
+          | to_entries
+          | map(.value.title=\"\(.key+1|tostring| if (.|length) < 2 then \"0\" + . else . end) \"+.value.title) 
+          |map(.value))
+          ")
     titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
     [ "$ENABLE_PREVIEW" = "true" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
     export search_results SHELL
     export -f init_pretty_print fzf-preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
-      title="$(printf "%s\nBack\nMain Menu\nExit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n')"
+      title="$(printf "%s\n${CYAN}󰌍${RESET}  Back\n${CYAN}󰍜${RESET}  Main Menu\n${RED}󰈆${RESET}  Exit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n' | sed 's/^[^0-9]  //g')"
     else
       title="$(printf "%s\nBack\nMain Menu\nExit" "$titles" | launcher "select video")"
     fi
