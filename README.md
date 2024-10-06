@@ -71,3 +71,13 @@ curl -sL https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x 
 
 - glow - rendering the markdown for the descriptions
 - gum - for an even better ui
+
+# Usage
+
+```bash
+# launch the ui
+yt-x
+
+# edit your config
+yt-x -e
+```
