@@ -519,7 +519,7 @@ ${CYAN}${RESET}  Watch History
 ${CYAN}${RESET}  Clips
 ${CYAN}${RESET}  Edit Config
 ${RED}󰈆${RESET}  Exit
-" "$_custom" | launcher "Select Action" | sed 's/.*  //g')"
+" | launcher "Select Action" | sed 's/.*  //g')"
   fi
   [ "$action" = "Exit" ] && byebye
 
@@ -552,9 +552,9 @@ ${RED}󰈆${RESET}  Exit
     channels_explorer
     ;;
   Custom)
-    [ -z "$CUSTOM_PLAYLISTS" ] && echo "You dont have any custom playlists" && main
+    [ -z "$CUSTOM_PLAYLISTS" ] && echo "You dont have any custom playlists" && sleep "$NOTIFICATION_DURATION" && main
     _custom=$(echo "$CUSTOM_PLAYLISTS" | cut -d : -f 1 | launcher "Select Custom Playlist To Play")
-    url=$(echo "$CUSTOM_PLAYLISTS" | grep -s "$_custom" | sed "s/$_custom://g")
+    url=$(echo "$CUSTOM_PLAYLISTS" | grep -s "^$_custom" | sed "s/$_custom://g")
     search_results=$(run_yt_dlp "$url")
     ;;
   "Liked Videos")
