@@ -618,6 +618,7 @@ ${RED}󰈆${RESET}  Exit
       if [ -z "$media_action" ]; then
         media_action="$(printf "\
 ${CYAN}${RESET}  Watch
+${CYAN}${RESET}  Play All
 ${CYAN}${RESET}  Like
 ${CYAN}󰵀${RESET}  Subscribe to Channel
 ${CYAN}󱑤${RESET}  Download
@@ -628,13 +629,16 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
       [ "$media_action" = "Exit" ] && byebye
       clear
       case "$media_action" in
+      "Play All")
+        mpv "$url"
+        ;;
       Watch)
         echo "${MAGENTA}Now watching:${RESET} $title"
-        url=$(echo "$video" | jq '.url' -r)
+        video_url=$(echo "$video" | jq '.url' -r)
         if ! [ "$PLAYER" = mpv ] || [ "$PLATFORM" = android ]; then
           # url=$(yt-dlp "$url" -q --no-warnings -J 2>/dev/null | jq ".requested_formats| . as \$vid_formats|map(select(.height<=$VIDEO_QUALITY))|if isempty(.[]) then \$vid_formats else . end|.[0].url" -r 2>/dev/null)
-          url=$(yt-dlp "$url" -q --no-warnings --get-url --format "best[height<=$VIDEO_QUALITY]/best" 2>/dev/null | tail -n 1)
-          if ! [ "$?" = 0 ] || [ -z "$url" ]; then
+          video_url=$(yt-dlp "$video_url" -q --no-warnings --get-url --format "best[height<=$VIDEO_QUALITY]/best" 2>/dev/null | tail -n 1)
+          if ! [ "$?" = 0 ] || [ -z "$video_url" ]; then
             echo No video format found
             sleep 5
             break
@@ -643,14 +647,14 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         case "$PLATFORM" in
         android)
           case "$PLAYER" in
-          mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$url" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-          vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$url" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "$title" >/dev/null 2>&1 & ;;
+          mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_url" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+          vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$video_url" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "$title" >/dev/null 2>&1 & ;;
           esac
           ;;
         *)
           case "$PLAYER" in
-          mpv) mpv "$url" ;;
-          vlc) vlc "$url" --video-title "$title" ;;
+          mpv) mpv "$video_url" ;;
+          vlc) vlc "$video_url" --video-title "$title" ;;
           esac
           ;;
         esac
