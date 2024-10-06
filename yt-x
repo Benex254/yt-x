@@ -604,7 +604,14 @@ ${RED}󰈆${RESET}  Exit
 
     while true; do
       if [ -z "$media_action" ]; then
-        media_action="$(printf 'Watch\nLike\nSubscribe to Channel\nDownload\nBack\nMain Menu\nExit' | launcher "Select Media Action")"
+        media_action="$(printf "\
+${CYAN}${RESET}  Watch
+${CYAN}${RESET}  Like
+${CYAN}󰵀${RESET}  Subscribe to Channel
+${CYAN}󱑤${RESET}  Download
+${CYAN}󰌍${RESET}  Back
+${CYAN}${RESET}  Main Menu
+${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
       fi
       [ "$media_action" = "Exit" ] && byebye
       clear
