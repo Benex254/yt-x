@@ -128,6 +128,7 @@ load_config() {
   ! [ -f "$CLI_CONFIG_DIR/${CLI_NAME}.conf" ] && print_config >"$CLI_CONFIG_DIR/${CLI_NAME}.conf"
 
   ROFI_THEME="$(grep -s 'ROFI_THEME:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
+  [ -f "$CLI_CONFIG_DIR/custom_playlists.yt-x" ] && CUSTOM_PLAYLISTS=$(cat "$CLI_CONFIG_DIR/custom_playlists.yt-x")
 
   FZF_DEFAULT_OPTS=${LIBX_FZF_OPTS:-'
     --color=fg:#d0d0d0,fg+:#d0d0d0,bg:#121212,bg+:#262626
@@ -512,12 +513,13 @@ ${CYAN}${RESET}  Search
 ${CYAN}${RESET}  Watch Later
 ${CYAN}󰵀${RESET}  Subscription Feed
 ${CYAN}󰑈${RESET}  Channels
+${CYAN}${RESET}  Custom
 ${CYAN}${RESET}  Liked Videos
 ${CYAN}${RESET}  Watch History
 ${CYAN}${RESET}  Clips
 ${CYAN}${RESET}  Edit Config
 ${RED}󰈆${RESET}  Exit
-" | launcher "Select Action" | sed 's/.*  //g')"
+" "$_custom" | launcher "Select Action" | sed 's/.*  //g')"
   fi
   [ "$action" = "Exit" ] && byebye
 
@@ -548,6 +550,12 @@ ${RED}󰈆${RESET}  Exit
   Channels)
     unset channel
     channels_explorer
+    ;;
+  Custom)
+    [ -z "$CUSTOM_PLAYLISTS" ] && echo "You dont have any custom playlists" && main
+    _custom=$(echo "$CUSTOM_PLAYLISTS" | cut -d : -f 1 | launcher "Select Custom Playlist To Play")
+    url=$(echo "$CUSTOM_PLAYLISTS" | grep -s "$_custom" | sed "s/$_custom://g")
+    search_results=$(run_yt_dlp "$url")
     ;;
   "Liked Videos")
     url="https://www.youtube.com/playlist?list=LL"
