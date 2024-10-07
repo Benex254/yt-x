@@ -17,9 +17,11 @@ CLI_DIR="$(dirname "$(realpath "$0")")"
 CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
 CLI_CACHE_DIR="$HOME/.cache/$CLI_NAME"
 CLI_PREVIEW_IMAGES_CACHE_DIR="$CLI_CACHE_DIR/preview_images"
+CLI_PREVIEW_SCRIPTS_DIR="$CLI_CACHE_DIR/preview_text"
 
 [ -d "$CLI_CONFIG_DIR" ] || mkdir -p "$CLI_CONFIG_DIR"
 [ -d "$CLI_PREVIEW_IMAGES_CACHE_DIR" ] || mkdir -p "$CLI_PREVIEW_IMAGES_CACHE_DIR"
+[ -d "$CLI_PREVIEW_SCRIPTS_DIR" ] || mkdir -p "$CLI_PREVIEW_SCRIPTS_DIR"
 
 case "$(uname -a)" in
 *ndroid) PLATFORM="android" ;;
@@ -234,15 +236,80 @@ launcher() {
   esac
 
 }
+generate_text_preview() {
+  ids="$(echo "$1" | jq '.entries[].id' -r 2>/dev/null)"
+
+  [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+  for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
+    video=$(echo "$1" | jq ".entries[$((i - 1))]")
+    title=$(echo "$video" | jq ".title" -r | sed 's/"/\\\\"/g;s/^.. //g')
+
+    view_count=$(
+      echo "$video" | jq -r '
+      .view_count
+      |tostring
+      |split("")
+      |reverse
+      |join("")
+      |gsub("(?<thousands>[0-9]{3})(?=[0-9])"; "\(.thousands),")
+      |split("")
+      |reverse
+      |join("")
+      '
+    )
+
+    live_status=$(echo "$video" | jq '.live_status' -r)
+    [ "$live_status" = "null" ] && live_status='false'
+
+    description=$(echo "$video" | jq '.description' -r | sed "s/\"//g;s/%//g")
+    # if [ $i -ge 26 ]; then
+    # echo $description
+    # read
+    # fi
+    channel=$(echo "$video" | jq '.channel' -r)
+    duration=$(echo "$video" | jq 'try if .duration>=3600 then .duration/3600|floor|tostring + " hours" else .duration/60|floor|tostring + " mins" end catch "Unknown" ' -r)
+    printf "
+if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${i}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${i}.jpg\" 2>/dev/null;
+else echo loading preview image...;
+fi
+ll=1
+while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
+echo
+
+echo \"$title\"
+
+ll=1
+while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
+echo \"${MAGENTA}${BOLD}Channel: ${RESET}$channel\";
+echo \"${MAGENTA}${BOLD}Duration: ${RESET}$duration\";
+echo \"${MAGENTA}${BOLD}View Count: ${RESET}$view_count views\";
+echo \"${MAGENTA}${BOLD}Live Status: ${RESET}$live_status\";
+
+ll=1
+while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
+echo
+
+
+if command -v glow &>/dev/null;then echo -n  \"$description\"|glow;
+else echo -n \"%s\";
+fi
+
+" "$description" >"$CLI_PREVIEW_SCRIPTS_DIR/$i.txt"
+
+  done
+}
+
 download_preview_images() {
-  echo Downloading images in the background...
+  echo generating preview in the background...
+  generate_text_preview "$1" &
+
   ids="$(echo "$1" | jq '.entries[].id' -r 2>/dev/null)"
   urls="$(echo "$1" | jq '.entries[].thumbnails[-1].url' -r 2>/dev/null)"
 
   [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
     echo "url = \"${2}$(echo "$urls" | head -n $i | tail -n 1)\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
-    echo "output = \"$CLI_PREVIEW_IMAGES_CACHE_DIR/$(echo "$ids" | head -n $i | tail -n 1).jpg\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+    echo "output = \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${i}.jpg\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   done
   curl -s -K "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" &
 }
@@ -316,59 +383,13 @@ core_dep_ch() {
 }
 trap byebye INT TERM
 PREVIEW_SCRIPT_FOR_VIDEOS="
-  if ! [ -z {} ] && [[ {} =~ ^[0-9][0-9].* ]];then
-    init_pretty_print;
-
-    title=\"\$(echo {}|sed 's/\"/\\\\\\\"/g')\"
-    video=\$(echo \"\$search_results\" | jq -r \".entries | map(select(.title == \\\"\$title\\\" )) | .[0]\" 2>/dev/null)
-
-    id=\$(echo \$video | jq '.id' -r);
-
-    channel=\$(echo \"\$video\"| jq '.channel' -r);
-
-    duration=\$(echo \"\$video\"| jq 'try if .duration>=3600 then .duration/3600|floor|tostring + \" hours\" else .duration/60|floor|tostring + \" mins\" end catch \"Unknown\" ' -r);
-    
-    view_count=\$(echo \"\$video\"| jq -r '
-    .view_count
-    |tostring
-    |split(\"\")
-    |reverse
-    |join(\"\")
-    |gsub(\"(?<thousands>[0-9]\\{3})(?=[0-9])\"; \"\\(.thousands),\")
-    |split(\"\")
-    |reverse
-    |join(\"\")
-    '
-    );
-    
-    live_status=\$(echo \"\$video\"| jq '.live_status' -r);
-    [ \"\$live_status\" = \"null\" ] && live_status='false' 
-    
-    description=\$(echo \"\$video\"| jq '.description' -r);
-    
-    if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
-    else echo loading preview image...;
-    fi
-    ll=1
-    while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
-    echo
-
-    echo \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\";
-    echo \"\${MAGENTA}\${BOLD}Title: \${RESET}\$(echo \"\$video\"|jq '.title' -r|sed 's/^.. //g')\";
-    echo \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\";
-    echo \"\${MAGENTA}\${BOLD}Duration: \${RESET}\$duration\";
-    echo \"\${MAGENTA}\${BOLD}View Count: \${RESET}\$view_count views\";
-    echo \"\${MAGENTA}\${BOLD}Live Status: \${RESET}\$live_status\";
-
-    ll=1
-    while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
-    echo
-    if command -v glow&>/dev/null;then echo -e \"\$description\"|glow;
-    else echo -e \"\$description\";
-    fi
+  title={}
+  id=\$(echo -n {} | sed -E 's/^([0-9]+) .*/\1/g;s/^0//g')
+  if  [ -f \"$CLI_PREVIEW_SCRIPTS_DIR/\${id}.txt\" ];then
+    source \"$CLI_PREVIEW_SCRIPTS_DIR/\${id}.txt\";
   else
-    echo Loading...;
-  fi;
+    echo Loading Preview...
+  fi
 "
 PREVIEW_SCRIPT_FOR_CHANNELS="
   if ! [ -z {} ] && ! [ {} = \"Back\" ] && ! [ {} = \"Exit\" ] && ! [ {} = \"Main Menu\" ];then
@@ -619,8 +640,9 @@ ${RED}󰈆${RESET}  Exit
     [ "$title" = "Back" ] && $BACK && DOWNLOAD_IMAGES=0 && continue
     [ "$title" = "Exit" ] && byebye
 
-    video="$(echo "$search_results" | jq ".entries|map(select(.title == \"$title\"))|.[0]")"
-    title=$(echo "$video" | jq '.title|split("\t")|.[-1]' -r)
+    id=$(echo "$title" | sed -E 's/^([0-9]+) .*/\1/g')
+    video="$(echo "$search_results" | jq ".entries[$((id - 1))]")"
+    title=$(echo "$video" | jq '.title' -r | sed 's/^[0-9]\+ //g')
 
     while true; do
       if [ -z "$media_action" ]; then
