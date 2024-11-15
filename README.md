@@ -6,11 +6,9 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Benex254/yt-x)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Benex254/yt-x)
 
-
 Browse YouTube from your terminal.
 
 [yt-x-search.webm](https://github.com/user-attachments/assets/e61bc8f1-e29d-4c13-a293-44e9ca706a0d)
-
 
 <details>
 <summary>Browse Channels You Have Subscribed To From The Terminal</summary>
@@ -21,7 +19,7 @@ Browse YouTube from your terminal.
 <details>
   <summary>View Channels Playlists</summary>
 
-  [yt-x-channels-playlists.webm](https://github.com/user-attachments/assets/96868b70-7add-4172-b646-26f17f8e5afe)
+[yt-x-channels-playlists.webm](https://github.com/user-attachments/assets/96868b70-7add-4172-b646-26f17f8e5afe)
 
 </details>
 
@@ -35,18 +33,19 @@ Browse YouTube from your terminal.
 <details>
 <summary>Watch Whats Featured in A Specific Channel</summary>
 
-  [yt-x-channels-featured.webm](https://github.com/user-attachments/assets/6c9e817a-8df3-4859-be04-395bc73aecad)
+[yt-x-channels-featured.webm](https://github.com/user-attachments/assets/6c9e817a-8df3-4859-be04-395bc73aecad)
 
 </details>
 
 <details>
   <summary>I Use Neovim By The Way</summary>
 
-  [yt-x-config.webm](https://github.com/user-attachments/assets/2d5b25d4-66ea-46c7-94da-5ecff22f9cde)
+[yt-x-config.webm](https://github.com/user-attachments/assets/2d5b25d4-66ea-46c7-94da-5ecff22f9cde)
 
 </details>
 
 # Installation
+
 ![Linux/BSD](https://img.shields.io/badge/-Linux/BSD-red.svg?style=for-the-badge&logo=linux)
 ![Arch Linux](https://img.shields.io/badge/-Arch_Linux-black.svg?style=for-the-badge&logo=archlinux)
 ![MacOS](https://img.shields.io/badge/-MacOS-lightblue.svg?style=for-the-badge&logo=apple)
@@ -60,17 +59,20 @@ curl -sL https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x 
 
 **Required:**
 
-- jq - to pass the  json data
+- jq - to pass the json data
 - curl - to download preview images
 - yt-dlp - to provide the data
 - fzf - for the main ui
 - mpv - for streaming
 - ffmpeg - to properly download hsl streams
-  
+
 **optional:**
 
 - glow - rendering the markdown for the descriptions
 - gum - for an even better ui
+- chafa - image rendering
+- icat - image rendering
+- imgcat - image rendering
 
 # Usage
 
@@ -81,3 +83,48 @@ yt-x
 # edit your config
 yt-x -e
 ```
+
+## Define Custom Playlists
+
+This option lets you define custom playlists.
+
+For example:
+
+```ini
+# file located at: ~/.config/yt-x/custom_playlists.yt-x
+
+<playlist-name>: <playlist-url>
+```
+
+The playlist name should only contain letters and numbers.
+
+# Contribution
+
+Pr's are highly welcomed.
+
+# TODO
+
+**Features:**
+
+- [ ] Add like video functionality
+- [ ] Add subscribe to channel functionality
+- [ ] Use a JSON file to store custom playlists in order to allow more features
+- [ ] Handle visit channel in browser option
+
+**Fix:**
+
+- [ ] Fix the channel sub menu by making it conform to the new preview logic
+- [ ] Fix the channel image preview
+- [ ] Fix recent list not updating
+- [ ] Fix bug where going back in the channels menu may result into weird behavior
+
+**Documentation and refactor:**
+
+- [ ] Document all functionality
+- [ ] Remove all code in relation to lib-x which was used as a template for this project
+- [ ] Save the image and preview scripts with the filename as the id of the video or channel.
+- [ ] Save the channel preview script as a file
+- [ ] Write completions for fish
+- [ ] Switch to json for the config file
+- [ ] Don't force sixel graphics when using chafa
+- [ ] Remove unnecessary comments
