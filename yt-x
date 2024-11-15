@@ -442,7 +442,7 @@ get_channels_data() {
     channels_data=$(cat "$CLI_CONFIG_DIR/subscriptions.json")
   else
     echo Loading subscriptions...
-    channels_data=$(yt-dlp "https://www.youtube.com/feed/channels" --flat-playlist --cookies-from-browser chrome -J)
+    channels_data=$(yt-dlp "https://www.youtube.com/feed/channels" --flat-playlist "${PREFERRED_BROWSER[@]}" -J)
     ! [ "$FORCE_CHANNEL_THUMBNAILS_DOWNLOAD" = "0" ] && [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$channels_data" "https:"
     echo "$channels_data" >"$CLI_CONFIG_DIR/subscriptions.json"
     clear
