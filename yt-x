@@ -93,8 +93,6 @@ load_config() {
   PREFERRED_EDITOR="$(grep -s 'EDITOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
   [ -z "$PREFERRED_EDITOR" ] && PREFERRED_EDITOR=${EDITOR:-open}
 
-  # YT_DLP_FORMAT="$(grep -s 'YT_DLP_FORMAT:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-
   PREFERRED_SELECTOR="$(grep -s 'PREFERRED_SELECTOR:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
   [ -z "$PREFERRED_SELECTOR" ] && PREFERRED_SELECTOR="fzf"
 
@@ -114,7 +112,6 @@ load_config() {
   [ -z "$PLAYER" ] && PLAYER='mpv'
 
   PREFERRED_BROWSER="$(grep -s 'PREFERRED_BROWSER:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
-  # [ -z "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER="chrome"
   [ -n "$PREFERRED_BROWSER" ] && PREFERRED_BROWSER=("--cookies-from-browser" "$PREFERRED_BROWSER")
 
   NO_OF_SEARCH_RESULTS="$(grep -s 'NUMBER_OF_SEARCH_RESULTS:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
@@ -143,16 +140,14 @@ load_config() {
   init_pretty_print
   export FZF_DEFAULT_OPTS PRETTY_PRINT PLATFORM
 }
+
+# Adapted from the preview script in the fzf repo
 fzf-preview() {
 
   file=${1/#\~\//$HOME/}
   type=$(file --dereference --mime -- "$file")
 
   if [[ ! $type =~ image/ ]]; then
-    # Sometimes bat is installed as batcat.
-    # echo hmmm weird this should never be the case
-    # echo for some reason the mime type for the given file is not an image
-    # echo please report this to the devs
     echo Loading...
     return 1
   fi
@@ -262,10 +257,6 @@ generate_text_preview() {
     [ "$live_status" = "null" ] && live_status='false'
 
     description=$(echo "$video" | jq '.description' -r | sed "s/\"//g;s/%//g")
-    # if [ $i -ge 26 ]; then
-    # echo $description
-    # read
-    # fi
     channel=$(echo "$video" | jq '.channel' -r)
     duration=$(echo "$video" | jq 'try if .duration>=3600 then .duration/3600|floor|tostring + " hours" else .duration/60|floor|tostring + " mins" end catch "Unknown" ' -r)
     printf "
@@ -339,7 +330,6 @@ launcher_with_preview() {
 }
 init_pretty_print() {
   if [ "$PRETTY_PRINT" = "true" ]; then
-    # Check if stdout is a terminal
     RED=$(tput setaf 1)
     GREEN=$(tput setaf 2)
     YELLOW=$(tput setaf 3)
@@ -472,7 +462,6 @@ channels_explorer() {
     [ "$channel_name" = "Main Menu" ] && unset action && main && return 0
     channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
   fi
-  # if [ -z "$channel_action" ]; then
   channel_action="$(printf "\
 ${CYAN}${RESET}  Videos
 ${CYAN}󰩉${RESET}  Featured
@@ -481,7 +470,6 @@ ${CYAN}󰐑${RESET}  Playlists
 ${CYAN}󰌍${RESET}  Back
 ${RED}󰈆${RESET}  Exit
 " | launcher "Select Action" | sed 's/.  //g')"
-  # fi
   [ "$channel_action" = "Exit" ] && byebye
   [ "$channel_action" = "Back" ] && unset channel && channels_explorer
   uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
@@ -670,7 +658,6 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         echo "${MAGENTA}Now watching:${RESET} $title"
         video_url=$(echo "$video" | jq '.url' -r)
         if ! [ "$PLAYER" = mpv ] || [ "$PLATFORM" = android ]; then
-          # url=$(yt-dlp "$url" -q --no-warnings -J 2>/dev/null | jq ".requested_formats| . as \$vid_formats|map(select(.height<=$VIDEO_QUALITY))|if isempty(.[]) then \$vid_formats else . end|.[0].url" -r 2>/dev/null)
           video_url=$(yt-dlp "$video_url" -q --no-warnings --get-url --format "best[height<=$VIDEO_QUALITY]/best" 2>/dev/null | tail -n 1)
           if ! [ "$?" = 0 ] || [ -z "$video_url" ]; then
             echo No video format found
