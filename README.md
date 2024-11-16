@@ -1,6 +1,6 @@
 # YT-X
 
-![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/Benex254/FastAnime)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/Benex254/yt-x)
 ![GitHub License](https://img.shields.io/github/license/Benex254/yt-x)
 ![GitHub file size in bytes](https://img.shields.io/github/size/Benex254/yt-x/yt-x)
 ![GitHub Release](https://img.shields.io/github/v/release/Benex254/yt-x)
@@ -52,6 +52,10 @@ Browse YouTube from your terminal.
 ![Android](https://img.shields.io/badge/-Android-green.svg?style=for-the-badge&logo=android)
 
 ```bash
+# latest release
+curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/tags/v0.1.1/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
+
+# Development version
 curl -sL https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
 ```
 
@@ -110,6 +114,7 @@ Pr's are highly welcomed.
 - [ ] Add subscribe to channel functionality
 - [ ] Use a JSON file to store custom playlists in order to allow more features
 - [ ] Handle visit channel in browser option
+- [ ] Update script option
 
 **Fix:**
 
