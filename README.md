@@ -56,7 +56,10 @@ Browse YouTube from your terminal.
 curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/tags/v0.1.1/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
 
 # Development version
-curl -sL https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
+curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
+
+# Try out the script
+curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x" | bash
 ```
 
 # Dependencies
@@ -118,18 +121,15 @@ Pr's are highly welcomed.
 
 **Fix:**
 
-- [ ] Fix the channel sub menu by making it conform to the new preview logic
-- [ ] Fix the channel image preview
-- [ ] Fix recent list not updating
+- [x] Fix the channel sub menu by making it conform to the new preview logic
+- [x] Fix the channel image preview
 - [ ] Fix bug where going back in the channels menu may result into weird behavior
 
 **Documentation and refactor:**
 
 - [ ] Document all functionality
 - [ ] Remove all code in relation to lib-x which was used as a template for this project
-- [ ] Save the image and preview scripts with the filename as the id of the video or channel.
-- [ ] Save the channel preview script as a file
+- [x] Save the image and preview scripts with the filename as the id of the video or channel.
 - [ ] Write completions for fish
-- [ ] Switch to json for the config file
 - [ ] Don't force sixel graphics when using chafa
-- [ ] Remove unnecessary comments
+- [x] Remove unnecessary comments
