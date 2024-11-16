@@ -238,6 +238,7 @@ generate_text_preview() {
   for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
     video=$(echo "$1" | jq ".entries[$((i - 1))]")
     title=$(echo "$video" | jq ".title" -r | sed 's/"/\\\\"/g;s/^.. //g')
+    id=$(echo "$video" | jq '.id' -r)
 
     view_count=$(
       echo "$video" | jq -r '
@@ -260,7 +261,7 @@ generate_text_preview() {
     channel=$(echo "$video" | jq '.channel' -r)
     duration=$(echo "$video" | jq 'try if .duration>=3600 then .duration/3600|floor|tostring + " hours" else .duration/60|floor|tostring + " mins" end catch "Unknown" ' -r)
     printf "
-if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${i}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${i}.jpg\" 2>/dev/null;
+if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" 2>/dev/null;
 else echo loading preview image...;
 fi
 ll=1
@@ -285,7 +286,7 @@ if command -v glow &>/dev/null;then echo -n  \"$description\"|glow;
 else echo -n \"%s\";
 fi
 
-" "$description" >"$CLI_PREVIEW_SCRIPTS_DIR/$i.txt"
+" "$description" >"$CLI_PREVIEW_SCRIPTS_DIR/${i}.txt"
 
   done
 }
@@ -299,8 +300,9 @@ download_preview_images() {
 
   [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
+    video=$(echo "$1" | jq ".entries[$((i - 1))]")
     echo "url = \"${2}$(echo "$urls" | head -n $i | tail -n 1)\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
-    echo "output = \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${i}.jpg\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
+    echo "output = \"$CLI_PREVIEW_IMAGES_CACHE_DIR/$(echo "$video" | jq '.id' -r).jpg\"" >>"$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   done
   curl -s -K "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" &
 }
