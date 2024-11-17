@@ -57,9 +57,6 @@ curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/tags/v0.1.1/yt-x"
 
 # Development version
 curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
-
-# Try out the script
-curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x" | bash
 ```
 
 # Dependencies
