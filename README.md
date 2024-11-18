@@ -130,3 +130,12 @@ Pr's are highly welcomed.
 - [ ] Write completions for fish
 - [ ] Don't force sixel graphics when using chafa
 - [x] Remove unnecessary comments
+
+# Receiving Support
+You can find me here incase you need any help setting it up or just want to hang with the community.
+<p align="center">
+<a href="https://discord.gg/HBEmAwvbHV">
+<img src="https://invidget.switchblade.xyz/C4rhMA4mmK">
+</a>
+</p>
+
