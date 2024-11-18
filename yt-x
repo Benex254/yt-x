@@ -189,7 +189,28 @@ fzf-preview() {
     # that's the case here.
     imgcat -W "${dim%%x*}" -H "${dim##*x}" "$file"
 
-    # 4. Cannot find any suitable method to preview the image
+    # 4. Use ueberzug image preview
+  elif command -v ueberzug >/dev/null; then 
+    if [[ -n "$(pgrep ueberzug)" ]] 
+    then 
+      killall ueberzug 
+    fi
+
+    fifo="$(mktemp -u)"
+    mkfifo "$fifo"
+    {
+        printf "%s\n" \
+        '{"action":"add","identifier":"preview","max_height":'${dim##*x}',"max_width":'${dim%%x*}',"path":"'$file'","x":4,"y":3}'
+        read < $fifo
+    } | ueberzug layer &
+    rm "$fifo"
+
+    for line in $(seq $((${dim##*x}/2)))
+    do 
+      echo 
+    done
+
+    # 5. Cannot find any suitable method to preview the image
   else
     echo please install a terminal image viewer
     echo either icat for kitty terminal and wezterm or imgcat or chafa
@@ -631,6 +652,12 @@ ${RED}󰈆${RESET}  Exit
     [ "$title" = "Main Menu" ] && break
     [ "$title" = "Back" ] && $BACK && DOWNLOAD_IMAGES=0 && continue
     [ "$title" = "Exit" ] && byebye
+
+    # Sometimes the ueberzug process lurks in the background 
+    if [[ -n "$(pgrep ueberzug)" ]] 
+    then 
+      killall ueberzug 
+    fi
 
     id=$(echo "$title" | sed -E 's/^([0-9]+) .*/\1/g')
     video="$(echo "$search_results" | jq ".entries[$((id - 1))]")"
