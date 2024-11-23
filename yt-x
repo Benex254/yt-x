@@ -234,7 +234,7 @@ confirm() {
   fi
 }
 launcher() {
-  case "${PREFERRED_SELECTOR,,}" in
+  case "$(echo "$PREFERRED_SELECTOR" | tr '[:upper:]' '[:lower:]')" in
   rofi)
     if [ -z "$ROFI_THEME" ]; then
       rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
