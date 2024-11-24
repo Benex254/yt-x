@@ -13,7 +13,7 @@ CLI_HEADER='
 # CLI_NAME=${0##*/}
 CLI_NAME="yt-x"
 
-CLI_VERSION="0.1.1"
+CLI_VERSION="0.2.0"
 CLI_AUTHOR="Benexl"
 CLI_DIR="$(dirname "$(realpath "$0")")"
 CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
