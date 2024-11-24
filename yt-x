@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#A script written by BeneX-254 in September 2024 under MIT LICENSE
+#A script written by Benexl in September 2024 under MIT LICENSE
 
 CLI_HEADER='
 ██╗░░░██╗████████╗░░░░░░██╗░░██╗
@@ -14,7 +14,7 @@ CLI_HEADER='
 CLI_NAME="yt-x"
 
 CLI_VERSION="0.1.1"
-CLI_AUTHOR="BeneX-254"
+CLI_AUTHOR="Benexl"
 CLI_DIR="$(dirname "$(realpath "$0")")"
 CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
 CLI_CACHE_DIR="$HOME/.cache/$CLI_NAME"
