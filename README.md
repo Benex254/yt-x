@@ -53,10 +53,10 @@ Browse YouTube from your terminal.
 
 ```bash
 # latest release
-curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/tags/v0.1.1/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
+curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/tags/v0.1.1/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
 
 # Development version
-curl -sL "https://raw.githubusercontent.com/Benex254/yt-x/refs/heads/master/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
+curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/heads/master/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
 ```
 
 # Dependencies
