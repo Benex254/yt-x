@@ -24,7 +24,6 @@ CLI_PREVIEW_SCRIPTS_DIR="$CLI_CACHE_DIR/preview_text"
 [ -d "$CLI_PREVIEW_IMAGES_CACHE_DIR" ] || mkdir -p "$CLI_PREVIEW_IMAGES_CACHE_DIR"
 [ -d "$CLI_PREVIEW_SCRIPTS_DIR" ] || mkdir -p "$CLI_PREVIEW_SCRIPTS_DIR"
 
-CURRENT_TIME=$(date +%s)
 case "$(uname -a)" in
 *ndroid) PLATFORM="android" ;;
 *Darwin*) PLATFORM="mac" ;;
@@ -526,186 +525,7 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
     echo Loading...;
   fi;
 "
-force_update=0
-get_channels_data() {
-  [ "$FORCE_CHANNEL_THUMBNAILS_DOWNLOAD" = "0" ] && download_preview_images "$channels_data" "https:"
-  if [ -f "$CLI_CONFIG_DIR/subscriptions.json" ] && ! [ "$force_update" = "1" ]; then
-    channels_data=$(cat "$CLI_CONFIG_DIR/subscriptions.json")
-  else
-    echo Loading subscriptions...
-    channels_data=$(yt-dlp "https://www.youtube.com/feed/channels" --flat-playlist "${PREFERRED_BROWSER[@]}" -J)
-    ! [ "$FORCE_CHANNEL_THUMBNAILS_DOWNLOAD" = "0" ] && [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$channels_data" "https:"
-    echo "$channels_data" >"$CLI_CONFIG_DIR/subscriptions.json"
-    clear
-  fi
-}
-handle_playlist() {
-  playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
-
-  playlist_title=$(printf "%s\nBack" "$playlist_video_titles" | launcher "Select Playlist")
-  [ "$playlist_title" = "Back" ] && channels_explorer
-  playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
-  playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
-  url="$(echo "$playlist" | jq '.url' -r)"
-  search_results=$(run_yt_dlp "$url")
-  return 0
-}
-channels_explorer() {
-  if [ -z "$channel" ]; then
-    get_channels_data
-    channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
-    SHELL="bash"
-    export SHELL CLI_CONFIG_DIR
-    export -f init_pretty_print fzf-preview get_channels_data
-    channel_name=$(printf "%s\nMain Menu\nExit" "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
-    channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
-    [ "$channel_name" = "Exit" ] && byebye
-    [ "$channel_name" = "Main Menu" ] && unset action && main && return 0
-    channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
-  fi
-  channel_action="$(printf "\
-${CYAN}${RESET}  Videos
-${CYAN}󰩉${RESET}  Featured
-${CYAN}${RESET}  Search
-${CYAN}󰐑${RESET}  Playlists
-${CYAN}󰌍${RESET}  Back
-${RED}󰈆${RESET}  Exit
-" | launcher "Select Action" | sed 's/.  //g')"
-  [ "$channel_action" = "Exit" ] && byebye
-  [ "$channel_action" = "Back" ] && unset channel && channels_explorer
-  uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
-
-  case "$channel_action" in
-  Videos)
-    url="$uploader_url_base/videos"
-    search_results=$(run_yt_dlp "$url")
-    BACK="channels_explorer"
-    ;;
-  Featured)
-    playlist_url="$uploader_url_base/featured"
-    playlist_results=$(run_yt_dlp "$playlist_url")
-    handle_playlist
-    BACK="handle_playlist"
-    ;;
-  Playlists)
-    playlist_url="$uploader_url_base/playlists"
-    playlist_results=$(run_yt_dlp "$playlist_url")
-    handle_playlist
-    BACK="handle_playlist"
-    ;;
-  Search)
-    clear
-    search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
-    url="$uploader_url_base/search?query=$search_Term"
-    search_results=$(run_yt_dlp "$url")
-    BACK="channels_explorer"
-    ;;
-  Exit)
-    byebye
-    ;;
-  *)
-    echo invalid channel action
-    sleep "$NOTIFICATION_DURATION"
-    main
-    ;;
-  esac
-  return 0
-}
-main() {
-  core_dep_ch
-  clear
-  if [ -z "$action" ]; then
-    action="$(printf "\
-${CYAN}${RESET}  Your Feed
-${CYAN}${RESET}  Trending
-${CYAN}󰐑${RESET}  Playlists
-${CYAN}${RESET}  Search
-${CYAN}${RESET}  Watch Later
-${CYAN}󰵀${RESET}  Subscription Feed
-${CYAN}󰑈${RESET}  Channels
-${CYAN}${RESET}  Custom
-${CYAN}${RESET}  Liked Videos
-${CYAN}${RESET}  Watch History
-${CYAN}${RESET}  Clips
-${CYAN}${RESET}  Edit Config
-${RED}󰈆${RESET}  Exit
-" | launcher "Select Action" | sed 's/.*  //g')"
-  fi
-  [ "$action" = "Exit" ] && byebye
-
-  BACK="break"
-  unset urlForAll
-  case "$action" in
-  "Your Feed")
-    url="https://www.youtube.com"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  Trending)
-    url="https://www.youtube.com/feed/trending"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  Search)
-    clear
-    search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
-    url="https://www.youtube.com/results?search_query=$search_Term&sp=EgIQAQ%253D%253D"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  "Subscription Feed")
-    url="https://www.youtube.com/feed/subscriptions"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  Playlists)
-    url="https://www.youtube.com/feed/playlists"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  Channels)
-    unset channel
-    channels_explorer
-    ;;
-  Custom)
-    ! [ -s "$CUSTOM_PLAYLISTS" ] && echo "You dont have any custom playlists create them here <$CUSTOM_PLAYLISTS>" && sleep "$NOTIFICATION_DURATION" && main
-    _custom=$(jq -r '.[].name' "$CUSTOM_PLAYLISTS" | launcher "Select Custom Playlist To Play")
-    url=$(jq -r ". | map(select(.name == \"$_custom\" )) | .[0].playlistWatchUrl" "$CUSTOM_PLAYLISTS")
-    urlForAll=$(jq -r ". | map(select(.name == \"$_custom\" )) | .[0].playlistUrl" "$CUSTOM_PLAYLISTS")
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  "Liked Videos")
-    url="https://www.youtube.com/playlist?list=LL"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  "Watch Later")
-    url="https://www.youtube.com/playlist?list=WL"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  "Watch History")
-    url="https://www.youtube.com/feed/history"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  Clips)
-    url="https://www.youtube.com/feed/clips"
-    search_results=$(run_yt_dlp "$url")
-    ;;
-  "Edit Config")
-    if command -v "$EDITOR" &>/dev/null; then
-      $EDITOR "$CLI_CONFIG_DIR/${CLI_NAME}.conf"
-    else
-      open "$CLI_CONFIG_DIR/${CLI_NAME}.conf"
-    fi
-    unset action
-    main
-    ;;
-  Exit)
-    byebye
-    ;;
-  *)
-    echo invalid action
-    sleep "$NOTIFICATION_DURATION"
-    unset action
-    main
-    ;;
-  esac
-  unset action
-
+playlist_explorer() {
   SHELL="bash"
   DOWNLOAD_IMAGES=0
   while true; do
@@ -748,9 +568,7 @@ ${RED}󰈆${RESET}  Exit
       break
       ;;
     Back)
-      $BACK
-      DOWNLOAD_IMAGES=0
-      continue
+      break
       ;;
     Exit)
       byebye
@@ -766,8 +584,7 @@ ${RED}󰈆${RESET}  Exit
     title=$(echo "$video" | jq '.title' -r | sed 's/^[0-9]\+ //g')
 
     while true; do
-      if [ -z "$media_action" ]; then
-        media_action="$(printf "\
+      media_action="$(printf "\
 ${CYAN}${RESET}  Watch
 ${CYAN}${RESET}  Play All
 ${CYAN}${RESET}  Like
@@ -777,8 +594,6 @@ ${CYAN}󰦗${RESET}  Download All
 ${CYAN}󰌍${RESET}  Back
 ${CYAN}${RESET}  Main Menu
 ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
-      fi
-      [ "$media_action" = "Exit" ] && byebye
       clear
       case "$media_action" in
       "Play All")
@@ -842,12 +657,10 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         yt-dlp "$(echo "$video" | jq '.url' -r)" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
         ;;
       Back)
-        unset media_action
         break
         ;;
       "Main Menu")
-        MAIN=true
-        unset media_action
+        # TODO: MAY make it go to menu like it used to
         break
         ;;
       Exit)
@@ -858,13 +671,191 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         sleep "$NOTIFICATION_DURATION"
         ;;
       esac
-      unset media_action
     done
-    if [ "$MAIN" = true ]; then
-      MAIN=false
-      break
-    fi
   done
+}
+get_channels_data() {
+  [ "$FORCE_CHANNEL_THUMBNAILS_DOWNLOAD" = "0" ] && download_preview_images "$channels_data" "https:"
+  if [ -f "$CLI_CONFIG_DIR/subscriptions.json" ] && ! [ "$force_update" = "1" ]; then
+    channels_data=$(cat "$CLI_CONFIG_DIR/subscriptions.json")
+  else
+    echo Loading subscriptions...
+    channels_data=$(yt-dlp "https://www.youtube.com/feed/channels" --flat-playlist "${PREFERRED_BROWSER[@]}" -J)
+    ! [ "$FORCE_CHANNEL_THUMBNAILS_DOWNLOAD" = "0" ] && [ "$ENABLE_PREVIEW" = "true" ] && download_preview_images "$channels_data" "https:"
+    echo "$channels_data" >"$CLI_CONFIG_DIR/subscriptions.json"
+    clear
+  fi
+}
+main() {
+  clear
+  action="$(printf "\
+${CYAN}${RESET}  Your Feed
+${CYAN}${RESET}  Trending
+${CYAN}󰐑${RESET}  Playlists
+${CYAN}${RESET}  Search
+${CYAN}${RESET}  Watch Later
+${CYAN}󰵀${RESET}  Subscription Feed
+${CYAN}󰑈${RESET}  Channels
+${CYAN}${RESET}  Custom
+${CYAN}${RESET}  Liked Videos
+${CYAN}${RESET}  Watch History
+${CYAN}${RESET}  Clips
+${CYAN}${RESET}  Edit Config
+${RED}󰈆${RESET}  Exit
+" | launcher "Select Action" | sed 's/.*  //g')"
+  [ "$action" = "Exit" ] && byebye
+
+  unset urlForAll
+  case "$action" in
+  "Your Feed")
+    url="https://www.youtube.com"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  Trending)
+    url="https://www.youtube.com/feed/trending"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  Search)
+    clear
+    search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
+    url="https://www.youtube.com/results?search_query=$search_Term&sp=EgIQAQ%253D%253D"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  "Subscription Feed")
+    url="https://www.youtube.com/feed/subscriptions"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  Playlists)
+    url="https://www.youtube.com/feed/playlists"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  Channels)
+    while true; do
+      get_channels_data
+      channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
+      export SHELL CLI_CONFIG_DIR
+      export -f init_pretty_print fzf-preview get_channels_data
+      channel_name=$(printf "%s\nMain Menu\nExit" "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
+      channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+      [ "$channel_name" = "Exit" ] && byebye
+      [ "$channel_name" = "Main Menu" ] && break
+      channel="$(echo "$channels_data" | jq ".entries|map(select(.channel == \"$channel_name\"))|.[0]")"
+      while true; do
+        channel_action="$(printf "\
+${CYAN}${RESET}  Videos
+${CYAN}󰩉${RESET}  Featured
+${CYAN}${RESET}  Search
+${CYAN}󰐑${RESET}  Playlists
+${CYAN}󰌍${RESET}  Back
+${RED}󰈆${RESET}  Exit
+" | launcher "Select Action" | sed 's/.  //g')"
+        [ "$channel_action" = "Exit" ] && byebye
+        [ "$channel_action" = "Back" ] && break
+        uploader_url_base="$(echo "$channel" | jq '.uploader_url' -r)"
+
+        case "$channel_action" in
+        Videos)
+          url="$uploader_url_base/videos"
+          search_results=$(run_yt_dlp "$url")
+          playlist_explorer
+          ;;
+        Featured)
+          playlist_url="$uploader_url_base/featured"
+          playlist_results=$(run_yt_dlp "$playlist_url")
+          playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
+          while true; do
+            playlist_title=$(echo -e "$playlist_video_titles\nBack" | launcher "Select Playlist")
+            [ "$playlist_title" = "Back" ] && break
+            playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+            playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
+            url="$(echo "$playlist" | jq '.url' -r)"
+            search_results=$(run_yt_dlp "$url")
+            playlist_explorer
+          done
+          ;;
+        Playlists)
+          playlist_url="$uploader_url_base/playlists"
+          playlist_results=$(run_yt_dlp "$playlist_url")
+          playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
+          while true; do
+            playlist_title=$(echo -e "$playlist_video_titles\nBack" | launcher "Select Playlist")
+            [ "$playlist_title" = "Back" ] && break
+            playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+            playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
+            url="$(echo "$playlist" | jq '.url' -r)"
+            search_results=$(run_yt_dlp "$url")
+            playlist_explorer
+          done
+          ;;
+        Search)
+          clear
+          search_Term="$(prompt "Enter term to search for" | jq -Rr '@uri')"
+          url="$uploader_url_base/search?query=$search_Term"
+          search_results=$(run_yt_dlp "$url")
+          playlist_explorer
+          ;;
+        Exit)
+          byebye
+          ;;
+        *)
+          echo invalid channel action
+          sleep "$NOTIFICATION_DURATION"
+          ;;
+        esac
+      done
+    done
+    ;;
+  Custom)
+    ! [ -s "$CUSTOM_PLAYLISTS" ] && echo "You dont have any custom playlists create them here <$CUSTOM_PLAYLISTS>" && sleep "$NOTIFICATION_DURATION" && main
+    while true; do
+      _custom=$(printf "%s\nBack" "$(jq -r '.[].name' "$CUSTOM_PLAYLISTS")" | launcher "Select Custom Playlist To Play")
+      [ "$_custom" = "Back" ] && break
+      url=$(jq -r ". | map(select(.name == \"$_custom\" )) | .[0].playlistWatchUrl" "$CUSTOM_PLAYLISTS")
+      urlForAll=$(jq -r ". | map(select(.name == \"$_custom\" )) | .[0].playlistUrl" "$CUSTOM_PLAYLISTS")
+      search_results=$(run_yt_dlp "$url")
+      playlist_explorer
+    done
+    ;;
+  "Liked Videos")
+    url="https://www.youtube.com/playlist?list=LL"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  "Watch Later")
+    url="https://www.youtube.com/playlist?list=WL"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  "Watch History")
+    url="https://www.youtube.com/feed/history"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  Clips)
+    url="https://www.youtube.com/feed/clips"
+    search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  "Edit Config")
+    if command -v "$EDITOR" &>/dev/null; then
+      $EDITOR "$CLI_CONFIG_DIR/${CLI_NAME}.conf"
+    else
+      open "$CLI_CONFIG_DIR/${CLI_NAME}.conf"
+    fi
+    ;;
+  Exit)
+    byebye
+    ;;
+  *)
+    echo invalid action
+    sleep "$NOTIFICATION_DURATION"
+    ;;
+  esac
   main
 }
 
@@ -914,7 +905,12 @@ Examples:
 " "$CLI_NAME"
   exit "$1"
 }
+
+# load config and default vars
 load_config
+force_update=0
+CURRENT_TIME=$(date +%s)
+
 while [ $# -gt 0 ]; do
   case "$1" in
   -h | --help)
@@ -1068,4 +1064,7 @@ Example:
   esac
   shift
 done
+
+# setup for ui
+core_dep_ch
 main
