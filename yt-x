@@ -385,7 +385,7 @@ run_yt_dlp() {
   if command -v "gum" &>/dev/null; then
     gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
   else
-    echo "Loading..."
+    echo "Loading..." >/dev/stderr
     yt-dlp "$1" -J --flat-playlist --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
   fi
 }
