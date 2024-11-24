@@ -72,7 +72,6 @@ curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/heads/master/yt-x" 
 
 **optional:**
 
-- glow - rendering the markdown for the descriptions
 - gum - for an even better ui
 - chafa - image rendering
 - icat - image rendering
@@ -91,16 +90,20 @@ yt-x -e
 ## Define Custom Playlists
 
 This option lets you define custom playlists.
+Its a list of playlist objects.
+located: `~/.config/yt-x/custom_playlists.json`
 
 For example:
 
-```ini
-# file located at: ~/.config/yt-x/custom_playlists.yt-x
-
-<playlist-name>: <playlist-url>
+```json
+[
+  {
+    "name": "<name of the playlist, should only contain letters or numbers>",
+    "playlistUrl": "https://www.youtube.com/playlist?list=<playlist-id>",
+    "playlistWatchUrl": "https://www.youtube.com/watch?list=<playlist-id>
+  }
+]
 ```
-
-The playlist name should only contain letters and numbers.
 
 # Contribution
 
@@ -112,7 +115,7 @@ Pr's are highly welcomed.
 
 - [ ] Add like video functionality
 - [ ] Add subscribe to channel functionality
-- [ ] Use a JSON file to store custom playlists in order to allow more features
+- [x] Use a JSON file to store custom playlists in order to allow more features
 - [ ] Handle visit channel in browser option
 - [ ] Update script option
 
@@ -132,10 +135,11 @@ Pr's are highly welcomed.
 - [x] Remove unnecessary comments
 
 # Receiving Support
+
 You can find me here incase you need any help setting it up or just want to hang with the community.
+
 <p align="center">
 <a href="https://discord.gg/HBEmAwvbHV">
 <img src="https://invidget.switchblade.xyz/C4rhMA4mmK">
 </a>
 </p>
-
