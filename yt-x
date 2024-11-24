@@ -20,11 +20,11 @@ CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
 CLI_CACHE_DIR="$HOME/.cache/$CLI_NAME"
 CLI_PREVIEW_IMAGES_CACHE_DIR="$CLI_CACHE_DIR/preview_images"
 CLI_PREVIEW_SCRIPTS_DIR="$CLI_CACHE_DIR/preview_text"
-
 [ -d "$CLI_CONFIG_DIR" ] || mkdir -p "$CLI_CONFIG_DIR"
 [ -d "$CLI_PREVIEW_IMAGES_CACHE_DIR" ] || mkdir -p "$CLI_PREVIEW_IMAGES_CACHE_DIR"
 [ -d "$CLI_PREVIEW_SCRIPTS_DIR" ] || mkdir -p "$CLI_PREVIEW_SCRIPTS_DIR"
 
+CURRENT_TIME=$(date +%s)
 case "$(uname -a)" in
 *ndroid) PLATFORM="android" ;;
 *Darwin*) PLATFORM="mac" ;;
@@ -282,7 +282,83 @@ generate_text_preview() {
 
     description=$(echo "$video" | jq '.description' -r | sed "s/\"//g;s/%//g")
     channel=$(echo "$video" | jq '.channel' -r)
-    duration=$(echo "$video" | jq 'try if .duration>=3600 then .duration/3600|floor|tostring + " hours" else .duration/60|floor|tostring + " mins" end catch "Unknown" ' -r)
+
+    # some duration calculations
+    duration=$(echo "$video" | jq '
+    try 
+      if .duration>=3600 then
+        if .duration/3600|floor == 1 then 
+          .duration/3600|floor|tostring + " hour" 
+        else 
+          .duration/3600|floor|tostring + " hours" 
+        end 
+      elif .duration>=60 then
+        if .duration/60|floor == 1 then 
+          .duration/60|floor|tostring + " min" 
+        else 
+          .duration/60|floor|tostring + " mins" 
+        end 
+      else 
+        if .duration == 1 then 
+          .duration/1|floor|tostring + " sec" 
+        else 
+          .duration/1|floor|tostring + " secs" 
+        end 
+      end
+    catch
+      "Unknown" 
+    ' -r)
+
+    # some date calculations
+    timestamp=$(echo "$video" | jq '.timestamp' -r)
+    relative_timestamp=$(("$CURRENT_TIME" - "$timestamp"))
+    if [ "$relative_timestamp" -lt 60 ]; then
+      timestamp="just now"
+    elif [ "$relative_timestamp" -lt 3600 ]; then
+      timestamp=$((relative_timestamp / 60))
+      if [ "$timestamp" -eq 1 ]; then
+        timestamp="$timestamp minute ago"
+      else
+        timestamp="$timestamp minutes ago"
+      fi
+    elif [ "$relative_timestamp" -lt 86400 ]; then
+      timestamp=$((relative_timestamp / 3600))
+      if [ "$relative_timestamp" -lt 7200 ]; then
+        timestamp="1 hour ago"
+      else
+        timestamp=$((relative_timestamp / 3600))
+        timestamp="$timestamp hours ago"
+      fi
+    elif [ "$relative_timestamp" -lt 604800 ]; then
+      timestamp=$((relative_timestamp / 86400))
+      if [ "$timestamp" -eq 1 ]; then
+        timestamp="$timestamp day ago"
+      else
+        timestamp="$timestamp days ago"
+      fi
+    elif [ "$relative_timestamp" -lt 2635200 ]; then
+      timestamp=$((relative_timestamp / 604800))
+      if [ "$timestamp" -eq 1 ]; then
+        timestamp="$timestamp week ago"
+      else
+        timestamp="$timestamp weeks ago"
+      fi
+    elif [ "$relative_timestamp" -lt 31622400 ]; then
+      timestamp=$((relative_timestamp / 2635200))
+      if [ "$timestamp" -eq 1 ]; then
+        timestamp="$timestamp month ago"
+      else
+        timestamp="$timestamp months ago"
+      fi
+    else
+      timestamp=$((relative_timestamp / 31622400))
+      if [ "$timestamp" -eq 1 ]; then
+        timestamp="$timestamp year ago"
+      else
+        timestamp="$timestamp years ago"
+      fi
+    fi
+
     printf "
 if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" 2>/dev/null;
 else echo loading preview image...;
@@ -299,6 +375,7 @@ printf \"${MAGENTA}${BOLD}Channel: ${RESET}$channel\n\";
 printf \"${MAGENTA}${BOLD}Duration: ${RESET}$duration\n\";
 printf \"${MAGENTA}${BOLD}View Count: ${RESET}$view_count views\n\";
 printf \"${MAGENTA}${BOLD}Live Status: ${RESET}$live_status\n\";
+printf \"${MAGENTA}${BOLD}Uploaded: ${RESET}$timestamp\n\";
 
 ll=1
 while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
@@ -383,10 +460,10 @@ prompt() {
 }
 run_yt_dlp() {
   if command -v "gum" &>/dev/null; then
-    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
+    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --extractor-args youtubetab:approximate_date --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
   else
     echo "Loading..." >/dev/stderr
-    yt-dlp "$1" -J --flat-playlist --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
+    yt-dlp "$1" -J --flat-playlist --extractor-args youtubetab:approximate_date --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
   fi
 }
 
@@ -438,9 +515,9 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
 
     ll=1
     while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
-    printf \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\n\";
+    # printf \"\${MAGENTA}\${BOLD}Id: \${RESET}\$id\n\";
     printf \"\${MAGENTA}\${BOLD}Channel: \${RESET}\$channel\n\";
-    printf \"\${MAGENTA}\${BOLD}Channel Follower Count: \${RESET}\$channel_follower_count followers\n\";
+    printf \"\${MAGENTA}\${BOLD}Follower Count: \${RESET}\$channel_follower_count followers\n\";
 
     ll=1
     while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
