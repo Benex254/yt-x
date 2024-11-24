@@ -682,10 +682,18 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
       clear
       case "$media_action" in
       "Play All")
-        mpv "$url"
+        if [ -n "$urlForAll" ]; then
+          mpv "$urlForAll"
+        else
+          mpv "$url"
+        fi
         ;;
       "Download All")
-        yt-dlp "$url"
+        if [ -n "$urlForAll" ]; then
+          yt-dlp "$urlForAll" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+        else
+          yt-dlp "$url" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+        fi
         ;;
       Watch)
         echo "${MAGENTA}Now watching:${RESET} $title"
@@ -714,22 +722,24 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         esac
         ;;
       Like)
-        echo $video
-        exit
+        echo contribute to the project by adding this feature
+        sleep "$NOTIFICATION_DURATION"
         ;;
       "Subscribe to Channel")
         # TODO: use youtube api to enable video subscriptions
-        command ...
+        echo contribute to the project by adding this feature
+        sleep "$NOTIFICATION_DURATION"
         ;;
       "Visit Channel")
         # TODO: use youtube api to enable video subscriptions
-        command ...
+        echo contribute to the project by adding this feature
+        sleep "$NOTIFICATION_DURATION"
         ;;
       "Open in Browser")
         open "$(echo "$video" | jq '.url' -r)"
         ;;
       Download)
-        yt-dlp "$(echo "$video" | jq '.url' -r)" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s"
+        yt-dlp "$(echo "$video" | jq '.url' -r)" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
         ;;
       Back)
         unset media_action
