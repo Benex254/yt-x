@@ -305,9 +305,7 @@ while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
 echo
 
 
-if command -v glow &>/dev/null;then echo -n  \"$description\"|glow;
-else echo -n \"%s\";
-fi
+! [ \"$description\" = \"null\" ] && echo -n \"%s\";
 
 " "$description" >"$CLI_PREVIEW_SCRIPTS_DIR/${i}.txt"
 
@@ -359,7 +357,8 @@ init_pretty_print() {
     GREEN=$(tput setaf 2)
     YELLOW=$(tput setaf 3)
     BLUE=$(tput setaf 4)
-    MAGENTA=$(tput setaf 5)
+    # MAGENTA=$(tput setaf 5)
+    MAGENTA="\x1b[38;2;215;0;95m"
     CYAN=$(tput setaf 6)
     WHITE=$(tput setaf 7)
     BOLD=$(tput bold)
