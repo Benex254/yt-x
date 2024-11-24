@@ -190,24 +190,22 @@ fzf-preview() {
     imgcat -W "${dim%%x*}" -H "${dim##*x}" "$file"
 
     # 4. Use ueberzug image preview
-  elif command -v ueberzug >/dev/null; then 
-    if [[ -n "$(pgrep ueberzug)" ]] 
-    then 
-      killall ueberzug 
+  elif command -v ueberzug >/dev/null; then
+    if [[ -n "$(pgrep ueberzug)" ]]; then
+      killall ueberzug
     fi
 
     fifo="$(mktemp -u)"
     mkfifo "$fifo"
     {
-        printf "%s\n" \
+      printf "%s\n" \
         '{"action":"add","identifier":"preview","max_height":'${dim##*x}',"max_width":'${dim%%x*}',"path":"'$file'","x":4,"y":3}'
-        read < $fifo
+      read <$fifo
     } | ueberzug layer &
     rm "$fifo"
 
-    for line in $(seq $((${dim##*x}/2)))
-    do 
-      echo 
+    for line in $(seq $((${dim##*x} / 2))); do
+      echo
     done
 
     # 5. Cannot find any suitable method to preview the image
@@ -655,10 +653,9 @@ ${RED}󰈆${RESET}  Exit
     [ "$title" = "Back" ] && $BACK && DOWNLOAD_IMAGES=0 && continue
     [ "$title" = "Exit" ] && byebye
 
-    # Sometimes the ueberzug process lurks in the background 
-    if [[ -n "$(pgrep ueberzug)" ]] 
-    then 
-      killall ueberzug 
+    # Sometimes the ueberzug process lurks in the background
+    if [[ -n "$(pgrep ueberzug)" ]]; then
+      killall ueberzug
     fi
 
     id=$(echo "$title" | sed -E 's/^([0-9]+) .*/\1/g')
