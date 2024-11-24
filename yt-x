@@ -130,6 +130,8 @@ load_config() {
 
   ROFI_THEME="$(grep -s 'ROFI_THEME:' "$CLI_CONFIG_DIR/${CLI_NAME}.conf" | sed 's/^#.*//g;s/^.*: //')"
   CUSTOM_PLAYLISTS="$CLI_CONFIG_DIR/custom_playlists.json"
+  PLAYLIST_START="1"
+  PLAYLIST_END="$NO_OF_SEARCH_RESULTS"
 
   FZF_DEFAULT_OPTS=${LIBX_FZF_OPTS:-'
     --color=fg:#d0d0d0,fg+:#d0d0d0,bg:#121212,bg+:#262626
@@ -382,10 +384,10 @@ prompt() {
 }
 run_yt_dlp() {
   if command -v "gum" &>/dev/null; then
-    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" "${PREFERRED_BROWSER[@]}"
+    gum spin --show-output -- yt-dlp "$1" -J --flat-playlist --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
   else
     echo "Loading..."
-    yt-dlp "$1" -J --flat-playlist --playlist-start 1 --playlist-end "$NO_OF_SEARCH_RESULTS" "${PREFERRED_BROWSER[@]}"
+    yt-dlp "$1" -J --flat-playlist --playlist-start "$PLAYLIST_START" --playlist-end "$PLAYLIST_END" "${PREFERRED_BROWSER[@]}"
   fi
 }
 
@@ -643,16 +645,41 @@ ${RED}󰈆${RESET}  Exit
     export search_results SHELL
     export -f init_pretty_print fzf-preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
-      title="$(printf "%s\n${CYAN}󰌍${RESET}  Back\n${CYAN}󰍜${RESET}  Main Menu\n${RED}󰈆${RESET}  Exit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n' | sed 's/^[^0-9]  //g')"
+      title="$(printf "%s\nNext\nPrevious\n${CYAN}󰌍${RESET}  Back\n${CYAN}󰍜${RESET}  Main Menu\n${RED}󰈆${RESET}  Exit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n' | sed 's/^[^0-9]  //g')"
     else
-      title="$(printf "%s\nBack\nMain Menu\nExit" "$titles" | launcher "select video")"
+      title="$(printf "%s\nNext\nPrevious\nBack\nMain Menu\nExit" "$titles" | launcher "select video")"
     fi
     clear
     title="$(echo "$title" | sed 's/"/\\"/g')"
-    [ "$title" = "Main Menu" ] && break
-    [ "$title" = "Back" ] && $BACK && DOWNLOAD_IMAGES=0 && continue
-    [ "$title" = "Exit" ] && byebye
-
+    case "$title" in
+    Next)
+      PLAYLIST_START=$((PLAYLIST_START + "$NO_OF_SEARCH_RESULTS"))
+      PLAYLIST_END=$((PLAYLIST_END + "$NO_OF_SEARCH_RESULTS"))
+      search_results=$(run_yt_dlp "$url")
+      DOWNLOAD_IMAGES=0
+      continue
+      ;;
+    Previous)
+      PLAYLIST_START=$((PLAYLIST_START - "$NO_OF_SEARCH_RESULTS"))
+      [ $PLAYLIST_START -le 0 ] && PLAYLIST_START=1
+      PLAYLIST_END=$((PLAYLIST_END - "$NO_OF_SEARCH_RESULTS"))
+      [ $PLAYLIST_END -le "$NO_OF_SEARCH_RESULTS" ] && PLAYLIST_END="$NO_OF_SEARCH_RESULTS"
+      search_results=$(run_yt_dlp "$url")
+      DOWNLOAD_IMAGES=0
+      continue
+      ;;
+    "Main Menu")
+      break
+      ;;
+    Back)
+      $BACK
+      DOWNLOAD_IMAGES=0
+      continue
+      ;;
+    Exit)
+      byebye
+      ;;
+    esac
     # Sometimes the ueberzug process lurks in the background
     if [[ -n "$(pgrep ueberzug)" ]]; then
       killall ueberzug
