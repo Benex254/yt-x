@@ -719,7 +719,7 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         fi
         ;;
       Watch)
-        echo "${MAGENTA}Now watching:${RESET} $title"
+        printf "${MAGENTA}Now watching:${RESET} $title"
         video_url=$(echo "$video" | jq '.url' -r)
         if ! [ "$PLAYER" = mpv ] || [ "$PLATFORM" = android ]; then
           video_url=$(yt-dlp "$video_url" -q --no-warnings --get-url --format "best[height<=$VIDEO_QUALITY]/best" 2>/dev/null | tail -n 1)
