@@ -52,6 +52,9 @@ Browse YouTube from your terminal.
 ![Android](https://img.shields.io/badge/-Android-green.svg?style=for-the-badge&logo=android)
 
 ```bash
+# nixos
+nix profile install github:Benexl/yt-x
+
 # latest release
 curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/tags/v0.1.1/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
 
@@ -100,7 +103,7 @@ For example:
   {
     "name": "<name of the playlist, should only contain letters or numbers>",
     "playlistUrl": "https://www.youtube.com/playlist?list=<playlist-id>",
-    "playlistWatchUrl": "https://www.youtube.com/watch?list=<playlist-id>
+    "playlistWatchUrl": "https://www.youtube.com/watch?list=<playlist-id>"
   }
 ]
 ```
