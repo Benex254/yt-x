@@ -521,7 +521,7 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
 
     ll=1
     while [ \$ll -le \$FZF_PREVIEW_COLUMNS ];do echo -n -e \"─\" ;(( ll++ ));done;
-    echo -e \"\$description\";
+    ! [ \"\$description\" = \"null\" ] && echo -e \"\$description\";
   else
     echo Loading...;
   fi;
