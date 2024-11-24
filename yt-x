@@ -254,12 +254,13 @@ launcher() {
 
 }
 generate_text_preview() {
+  [ -z "$search_results" ] && return 1
   ids="$(echo "$1" | jq '.entries[].id' -r 2>/dev/null)"
 
   # [ -f "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" ] && rm "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt"
   for ((i = 1; i <= "$(echo "$ids" | wc -l)"; i++)); do
     video=$(echo "$1" | jq ".entries[$((i - 1))]")
-    title=$(echo "$video" | jq ".title" -r | sed 's/"/\\\\"/g;s/^.. //g')
+    title=$(echo "$video" | jq ".title" -r | sed 's/"/\\\\"/g;s/%/%%/g;s/^.. //g')
     id=$(echo "$video" | jq '.id' -r)
 
     view_count=$(
@@ -389,6 +390,7 @@ echo
 }
 
 download_preview_images() {
+  [ -z "$search_results" ] && return 1
   echo generating preview in the background...
   generate_text_preview "$1" &
 
@@ -404,7 +406,7 @@ download_preview_images() {
   curl -s -K "$CLI_PREVIEW_IMAGES_CACHE_DIR/previews.txt" &
 }
 launcher_with_preview() {
-  case "${PREFERRED_SELECTOR,,}" in
+  case "$PREFERRED_SELECTOR" in
   rofi)
     if [ -z "$ROFI_THEME" ]; then
       rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "$1" -matching fuzzy -sorting-method fzf
