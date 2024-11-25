@@ -56,7 +56,7 @@ Browse YouTube from your terminal.
 nix profile install github:Benexl/yt-x
 
 # latest release
-curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/tags/v0.2.0/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
+curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/tags/v0.3.0/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
 
 # Development version
 curl -sL "https://raw.githubusercontent.com/Benexl/yt-x/refs/heads/master/yt-x" -o ~/.local/bin/yt-x && chmod +x ~/.local/bin/yt-x
@@ -126,7 +126,7 @@ Pr's are highly welcomed.
 
 - [x] Fix the channel sub menu by making it conform to the new preview logic
 - [x] Fix the channel image preview
-- [ ] Fix bug where going back in the channels menu may result into weird behavior
+- [x] Fix bug where going back in the channels menu may result into weird behavior
 
 **Documentation and refactor:**
 
