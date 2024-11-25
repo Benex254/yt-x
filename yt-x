@@ -236,9 +236,9 @@ launcher() {
   case "$(echo "$PREFERRED_SELECTOR" | tr '[:upper:]' '[:lower:]')" in
   rofi)
     if [ -z "$ROFI_THEME" ]; then
-      rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
+      while read -r line; do echo "$line" | sed -r 's/\x1B(\[[0-9;]*[a-zA-Z]|\(B)//g'; done | rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
     else
-      rofi -no-config -theme "$ROFI_THEME" -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
+      while read -r line; do echo "$line" | sed -r 's/\x1B(\[[0-9;]*[a-zA-Z]|\(B)//g'; done | rofi -no-config -theme "$ROFI_THEME" -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
     fi
     ;;
   *)
@@ -409,9 +409,9 @@ launcher_with_preview() {
   case "$PREFERRED_SELECTOR" in
   rofi)
     if [ -z "$ROFI_THEME" ]; then
-      rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "$1" -matching fuzzy -sorting-method fzf
+      while read -r line; do echo "$line" | sed -r 's/\x1B(\[[0-9;]*[a-zA-Z]|\(B)//g'; done | rofi -sort -matching fuzzy -dmenu -i -width 1500 -p "" -mesg "$1" -matching fuzzy -sorting-method fzf
     else
-      rofi -no-config -theme "$ROFI_THEME" -sort -matching fuzzy -dmenu -i -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
+      while read -r line; do echo "$line" | sed -r 's/\x1B(\[[0-9;]*[a-zA-Z]|\(B)//g'; done | rofi -no-config -theme "$ROFI_THEME" -sort -matching fuzzy -dmenu -i -p "" -mesg "Select Action" -matching fuzzy -sorting-method fzf
     fi
     ;;
   *)
@@ -537,15 +537,15 @@ playlist_explorer() {
           | to_entries
           | map(.value.title=\"\(.key+1|tostring| if (.|length) < 2 then \"0\" + . else . end) \"+.value.title) 
           |map(.value))
-          ")
+          ") && ! [ "$ENABLE_PREVIEW" = "true" ] || ! [ "$PREFERRED_SELECTOR" = "fzf" ] && DOWNLOAD_IMAGES=1
     titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
-    [ "$ENABLE_PREVIEW" = "true" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
+    [ "$ENABLE_PREVIEW" = "true" ] && [ "$PREFERRED_SELECTOR" = "fzf" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
     export search_results SHELL
     export -f init_pretty_print fzf-preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
       title="$(printf "%s\nNext\nPrevious\n${CYAN}󰌍${RESET}  Back\n${CYAN}󰍜${RESET}  Main Menu\n${RED}󰈆${RESET}  Exit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n' | sed 's/^[^0-9]  //g')"
     else
-      title="$(printf "%s\nNext\nPrevious\nBack\nMain Menu\nExit" "$titles" | launcher "select video")"
+      title="$(printf "%s\nNext\nPrevious\nBack\nMain Menu\nExit" "$titles" | launcher "select video" | tr -d '\n' | sed 's/^[^0-9]  //g')"
     fi
     clear
     title="$(echo "$title" | sed 's/"/\\"/g')"
