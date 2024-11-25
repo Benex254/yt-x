@@ -1,31 +1,44 @@
 {
   description = "Browse YouTube from your terminal with yt-x";
-  
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    { nixpkgs, ... }:
     let
+      inherit (nixpkgs) lib;
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
+      pkgs = nixpkgs.legacyPackages.${system};
+      deps = with pkgs; [
+        yt-dlp
+        jq
+        fzf
+        mpv
+        ffmpeg
+        gum
+      ];
     in
     {
-      packages.${system} = {
-        default = pkgs.stdenv.mkDerivation {
-          name = "yt-x";
-          src = ./.;
-          buildInputs = [ pkgs.yt-dlp pkgs.jq pkgs.fzf pkgs.mpv pkgs.ffmpeg pkgs.gum ];
-          installPhase = ''
-            mkdir -p $out/bin
-            cp yt-x $out/bin/
-            chmod +x $out/bin/yt-x
-          '';
-        };
+      packages.${system}.default = pkgs.stdenvNoCC.mkDerivation {
+        pname = "yt-x";
+        version = "git";
+        src = ./.;
+
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+
+        installPhase = ''
+          install -Dm755 yt-x -t $out/bin
+          wrapProgram $out/bin/yt-x \
+            --prefix PATH : ${lib.makeBinPath deps}
+        '';
+
+        meta.mainProgram = "yt-x";
       };
 
-      devShells.${system} = pkgs.mkShell {
-        buildInputs = [ pkgs.yt-dlp pkgs.jq pkgs.fzf pkgs.mpv pkgs.ffmpeg pkgs.gum ];
+      devShells.${system}.default = pkgs.mkShellNoCC {
+        packages = deps;
       };
     };
 }
