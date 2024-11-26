@@ -90,6 +90,26 @@ yt-x
 yt-x -e
 ```
 
+## TIPS
+
+To enable imports of subscriptions and viewing of private playlists and videos
+set your preferred browser in your config file
+
+For Example:
+```ini
+PREFERRED_BROWSER: chrome
+```
+
+To enable mpv to directly access private playlists and videos
+add something like this in your mpv.conf
+
+```ini
+ytdl-raw-options=cookies-from-browser=chrome
+
+# You can also set the quality
+ytdl-format="best[height<=1080]/bestvideo[height<=1080]+bestaudio/best"
+```
+
 ## Define Custom Playlists
 
 This option lets you define custom playlists.
