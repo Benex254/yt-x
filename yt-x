@@ -589,10 +589,14 @@ playlist_explorer() {
       media_action="$(printf "\
 ${CYAN}${RESET}  Watch
 ${CYAN}${RESET}  Play All
+${CYAN}󰎆${RESET}  Listen
+${CYAN}${RESET}  Listen To All
 ${CYAN}${RESET}  Like
-${CYAN}󰵀${RESET}  Subscribe to Channel
+${CYAN}󰵀${RESET}  Subscribe To Channel
 ${CYAN}󱑤${RESET}  Download
 ${CYAN}󰦗${RESET}  Download All
+${CYAN}󱑤${RESET}  Download (Audio Only)
+${CYAN}󰦗${RESET}  Download All (Audio Only)
 ${CYAN}󰌍${RESET}  Back
 ${CYAN}${RESET}  Main Menu
 ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
@@ -605,12 +609,30 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
           mpv "$url"
         fi
         ;;
+      "Listen To All")
+        if [ -n "$urlForAll" ]; then
+          mpv "$urlForAll" --no-video
+        else
+          mpv "$url" --no-video
+        fi
+        ;;
       "Download All")
         if [ -n "$urlForAll" ]; then
-          yt-dlp "$urlForAll" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+          yt-dlp "$urlForAll" --output "$DOWNLOAD_DIRECTORY/videos/%(channel)s/%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
         else
-          yt-dlp "$url" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+          yt-dlp "$url" --output "$DOWNLOAD_DIRECTORY/videos/%(channel)s/%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
         fi
+        ;;
+      "Download All (Audio Only)")
+        if [ -n "$urlForAll" ]; then
+          yt-dlp "$urlForAll" -x --audio-format mp3 --output "$DOWNLOAD_DIRECTORY/audio/%(channel)s/%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+        else
+          yt-dlp "$url" -x --audio-format mp3 --output "$DOWNLOAD_DIRECTORY/audio/%(channel)s/%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+        fi
+        ;;
+      Listen)
+        video_url=$(echo "$video" | jq '.url' -r)
+        mpv "$video_url" --no-video
         ;;
       Watch)
         printf "${MAGENTA}Now watching:${RESET} $title"
@@ -642,7 +664,7 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         echo contribute to the project by adding this feature
         sleep "$NOTIFICATION_DURATION"
         ;;
-      "Subscribe to Channel")
+      "Subscribe To Channel")
         # TODO: use youtube api to enable video subscriptions
         echo contribute to the project by adding this feature
         sleep "$NOTIFICATION_DURATION"
@@ -656,7 +678,12 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
         open "$(echo "$video" | jq '.url' -r)"
         ;;
       Download)
-        yt-dlp "$(echo "$video" | jq '.url' -r)" --output "$DOWNLOAD_DIRECTORY/%(channel)s_%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+        video_url=$(echo "$video" | jq '.url' -r)
+        yt-dlp "$video_url" --output "$DOWNLOAD_DIRECTORY/videos/%(channel)s/%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
+        ;;
+      "Download (Audio Only)")
+        video_url=$(echo "$video" | jq '.url' -r)
+        yt-dlp "$video_url" -x --audio-format mp3 --output "$DOWNLOAD_DIRECTORY/audio/%(channel)s/%(title)s.%(ext)s" "${PREFERRED_BROWSER[@]}"
         ;;
       Back)
         break
