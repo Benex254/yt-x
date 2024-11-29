@@ -591,7 +591,8 @@ ${CYAN}${RESET}  Watch
 ${CYAN}${RESET}  Play All
 ${CYAN}󰎆${RESET}  Listen
 ${CYAN}${RESET}  Listen To All
-${CYAN}${RESET}  Like
+${CYAN}${RESET}  Save
+${CYAN}󰧎${RESET}  UnSave
 ${CYAN}󰵀${RESET}  Subscribe To Channel
 ${CYAN}󱑤${RESET}  Download
 ${CYAN}󰦗${RESET}  Download All
@@ -660,9 +661,18 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
           ;;
         esac
         ;;
-      Like)
-        echo contribute to the project by adding this feature
-        sleep "$NOTIFICATION_DURATION"
+      Save)
+        # For now a pseudo like feature is just as useful
+        current_liked_videos='{"entries":[]}'
+        [ -s "$CLI_CONFIG_DIR/saved_videos.json" ] && current_liked_videos=$(cat "$CLI_CONFIG_DIR/saved_videos.json")
+        echo "$current_liked_videos" | jq ".entries+=[$(echo "$video" | jq '.title |= sub("^[0-9]+ "; "")')]" >"$CLI_CONFIG_DIR/saved_videos.json"
+
+        ;;
+      UnSave)
+        current_liked_videos='{"entries":[]}'
+        [ -s "$CLI_CONFIG_DIR/saved_videos.json" ] && current_liked_videos=$(cat "$CLI_CONFIG_DIR/saved_videos.json")
+        id=$(echo "$video" | jq '.id' -r)
+        echo "$current_liked_videos" | jq "{\"entries\":[.entries[] | select(.id != \"$id\")]}" >"$CLI_CONFIG_DIR/saved_videos.json"
         ;;
       "Subscribe To Channel")
         # TODO: use youtube api to enable video subscriptions
@@ -727,6 +737,7 @@ ${CYAN}󰵀${RESET}  Subscription Feed
 ${CYAN}󰑈${RESET}  Channels
 ${CYAN}${RESET}  Custom
 ${CYAN}${RESET}  Liked Videos
+${CYAN}${RESET}  Saved Videos
 ${CYAN}${RESET}  Watch History
 ${CYAN}${RESET}  Clips
 ${CYAN}${RESET}  Edit Config
@@ -761,6 +772,11 @@ ${RED}󰈆${RESET}  Exit
   Playlists)
     url="https://www.youtube.com/feed/playlists"
     search_results=$(run_yt_dlp "$url")
+    playlist_explorer
+    ;;
+  "Saved Videos")
+    ! [ -s "$CLI_CONFIG_DIR/saved_videos.json" ] && echo No saved videos && sleep "$NOTIFICATION_DURATION" && main
+    search_results=$(cat "$CLI_CONFIG_DIR/saved_videos.json")
     playlist_explorer
     ;;
   Channels)
