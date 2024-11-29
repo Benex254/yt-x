@@ -145,7 +145,7 @@ load_config() {
 }
 
 # Adapted from the preview script in the fzf repo
-fzf-preview() {
+fzf_preview() {
 
   file=${1/#\~\//$HOME/}
   type=$(file --dereference --mime -- "$file")
@@ -360,7 +360,7 @@ generate_text_preview() {
     fi
 
     printf "
-if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" 2>/dev/null;
+if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" ];then fzf_preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/${id}.jpg\" 2>/dev/null;
 else echo loading preview image...;
 fi
 ll=1
@@ -510,7 +510,7 @@ PREVIEW_SCRIPT_FOR_CHANNELS="
     
     description=\$(echo \"\$video\"| jq '.description' -r);
     
-    if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf-preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
+    if [ -f \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" ];then fzf_preview \"$CLI_PREVIEW_IMAGES_CACHE_DIR/\${id}.jpg\" 2>/dev/null;
     else echo loading preview image...;
     fi
 
@@ -541,7 +541,7 @@ playlist_explorer() {
     titles=$(echo "$search_results" | jq '.entries[].title' -r 2>/dev/null)
     [ "$ENABLE_PREVIEW" = "true" ] && [ "$PREFERRED_SELECTOR" = "fzf" ] && [ "$DOWNLOAD_IMAGES" = 0 ] && download_preview_images "$search_results" "" && DOWNLOAD_IMAGES=1
     export search_results SHELL
-    export -f init_pretty_print fzf-preview
+    export -f init_pretty_print fzf_preview
     if [ "$ENABLE_PREVIEW" = "true" ]; then
       title="$(printf "%s\nNext\nPrevious\n${CYAN}󰌍${RESET}  Back\n${CYAN}󰍜${RESET}  Main Menu\n${RED}󰈆${RESET}  Exit" "$titles" | launcher_with_preview "select video" "$PREVIEW_SCRIPT_FOR_VIDEOS" | tr -d '\n' | sed 's/^[^0-9]  //g')"
     else
@@ -784,7 +784,7 @@ ${RED}󰈆${RESET}  Exit
       get_channels_data
       channels=$(echo "$channels_data" | jq '.entries[].channel' -r)
       export SHELL CLI_CONFIG_DIR
-      export -f init_pretty_print fzf-preview get_channels_data
+      export -f init_pretty_print fzf_preview get_channels_data
       channel_name=$(printf "%s\nMain Menu\nExit" "$channels" | launcher_with_preview "Select Channel" "$PREVIEW_SCRIPT_FOR_CHANNELS")
       channel_name="$(echo "$channel_name" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
       [ "$channel_name" = "Exit" ] && byebye
