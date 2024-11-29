@@ -660,6 +660,10 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
           esac
           ;;
         esac
+
+        current_recent_videos='{"entries":[]}'
+        [ -s "$CLI_CONFIG_DIR/recent.json" ] && current_recent_videos=$(cat "$CLI_CONFIG_DIR/recent.json")
+        echo "$current_recent_videos" | jq ".entries+=[$(echo "$video" | jq '.title |= sub("^[0-9]+ "; "")')]" | jq "{\"entries\":.entries[-$NO_OF_RECENT:]}" >"$CLI_CONFIG_DIR/recent.json"
         ;;
       Save)
         # For now a pseudo like feature is just as useful
@@ -739,6 +743,7 @@ ${CYAN}${RESET}  Custom
 ${CYAN}${RESET}  Liked Videos
 ${CYAN}${RESET}  Saved Videos
 ${CYAN}${RESET}  Watch History
+${CYAN}${RESET}  Recent
 ${CYAN}${RESET}  Clips
 ${CYAN}${RESET}  Edit Config
 ${RED}󰈆${RESET}  Exit
@@ -777,6 +782,11 @@ ${RED}󰈆${RESET}  Exit
   "Saved Videos")
     ! [ -s "$CLI_CONFIG_DIR/saved_videos.json" ] && echo No saved videos && sleep "$NOTIFICATION_DURATION" && main
     search_results=$(cat "$CLI_CONFIG_DIR/saved_videos.json")
+    playlist_explorer
+    ;;
+  Recent)
+    ! [ -s "$CLI_CONFIG_DIR/recent.json" ] && echo No recent videos && sleep "$NOTIFICATION_DURATION" && main
+    search_results=$(cat "$CLI_CONFIG_DIR/recent.json" | jq '{"entries":.entries|reverse}')
     playlist_explorer
     ;;
   Channels)
