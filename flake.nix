@@ -3,13 +3,13 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
-    { nixpkgs, ... }:
-    let
+    { nixpkgs, flake-utils, ... }:
+    flake-utils.lib.eachDefaultSystem (system: let
       inherit (nixpkgs) lib;
-      system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       deps = with pkgs; [
         yt-dlp
@@ -21,7 +21,7 @@
       ];
     in
     {
-      packages.${system}.default = pkgs.stdenvNoCC.mkDerivation {
+      packages.default = pkgs.stdenvNoCC.mkDerivation {
         pname = "yt-x";
         version = "git";
         src = ./.;
@@ -40,5 +40,5 @@
       devShells.${system}.default = pkgs.mkShellNoCC {
         packages = deps;
       };
-    };
+    });
 }
