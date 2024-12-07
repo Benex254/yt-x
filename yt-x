@@ -778,8 +778,17 @@ ${RED}󰈆${RESET}  Exit
     ;;
   Playlists)
     url="https://www.youtube.com/feed/playlists"
-    search_results=$(run_yt_dlp "$url")
-    playlist_explorer
+    playlist_results=$(run_yt_dlp "$url")
+    playlist_video_titles=$(echo "$playlist_results" | jq '.entries[].title' -r)
+    while true; do
+      playlist_title=$(echo -e "$playlist_video_titles\nBack" | launcher "Select Playlist")
+      [ "$playlist_title" = "Back" ] && break
+      playlist_title="$(echo "$playlist_title" | sed 's/"/\\"/g;s/ *$//g' | tr -d "\n")"
+      playlist="$(echo "$playlist_results" | jq ".entries|map(select(.title == \"$playlist_title\"))|.[0]")"
+      url="$(echo "$playlist" | jq '.url' -r)"
+      search_results=$(run_yt_dlp "$url")
+      playlist_explorer
+    done
     ;;
   "Saved Videos")
     ! [ -s "$CLI_CONFIG_DIR/saved_videos.json" ] && echo No saved videos && sleep "$NOTIFICATION_DURATION" && main
