@@ -13,7 +13,7 @@ CLI_HEADER='
 # CLI_NAME=${0##*/}
 CLI_NAME="yt-x"
 
-CLI_VERSION="0.3.0"
+CLI_VERSION="0.3.2"
 CLI_AUTHOR="Benexl"
 CLI_DIR="$(dirname "$(realpath "$0")")"
 CLI_CONFIG_DIR="$HOME/.config/$CLI_NAME"
@@ -142,6 +142,53 @@ load_config() {
   '}
   init_pretty_print
   export FZF_DEFAULT_OPTS PRETTY_PRINT PLATFORM
+}
+send_notification() {
+  echo "$1" && sleep "$NOTIFICATION_DURATION"
+}
+update_script() {
+  yt_x_path="$(command -v yt-x)"
+  if [ -z "$yt_x_path" ]; then
+    send_notification "Can't find yt-x in PATH"
+    exit 1
+  fi
+
+  if [ ! -w "$yt_x_path" ]; then
+    if [ -n "$(command -v sudo)" ]; then
+      exec sudo -s "$yt_x_path" "-u"
+    else
+      send_notification "Insufficient permissions to update and can't find sudo in PATH"
+      exit 1
+    fi
+  fi
+
+  update=$(curl -s "https://raw.githubusercontent.com/Benexl/yt-x/refs/heads/master/yt-x" || byebye 1)
+  update="$(printf '%s\n' "$update" | diff -u "$yt_x_path" - 2>/dev/null)"
+  if [ -z "$update" ]; then
+    send_notification "Script is up to date :)"
+  else
+    if printf '%s\n' "$update" | patch "$yt_x_path" -; then
+      send_notification "Script has been updated!"
+    else
+      send_notification "Can't update for some reason!"
+    fi
+  fi
+  byebye
+}
+
+check_update() {
+  update=$(curl -s "https://raw.githubusercontent.com/Benexl/yt-x/refs/heads/master/yt-x")
+  update="$(printf '%s\n' "$update" | diff -u "$(command -v yt-x)" - 2>/dev/null)"
+  if [ -n "$update" ]; then
+    if [ "$PREFERRED_SELECTOR" = "fzf" ]; then
+      answer=$(prompt "$1")
+    else
+      answer=$(printf "Yes\nNo" | launcher "$1")
+    fi
+    case "$answer" in
+    [Yy]*) update_script ;;
+    esac
+  fi
 }
 
 # Adapted from the preview script in the fzf repo
@@ -448,7 +495,7 @@ init_pretty_print() {
 byebye() {
   clear
   echo "Have a good day $USERNAME"
-  exit 0
+  exit "${1:-0}"
 }
 prompt() {
   if command -v "gum" &>/dev/null; then
@@ -988,6 +1035,10 @@ while [ $# -gt 0 ]; do
     ;;
   -e | --edit-config)
     $PREFERRED_EDITOR "$CLI_CONFIG_DIR/${CLI_NAME}.conf" || exit 1
+    byebye
+    ;;
+  -U | --update)
+    check_update "A new version of $CLI_NAME has been found would you like to upgrade(y/n)"
     exit 0
     ;;
   -s | --search)
@@ -1132,5 +1183,7 @@ Example:
 done
 
 # setup for ui
+
+check_update "A new version of $CLI_NAME has been found would you like to upgrade(y/n)"
 core_dep_ch
 main
