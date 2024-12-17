@@ -141,6 +141,7 @@ Pr's are highly welcomed.
 - [ ] Handle visit channel in browser option
 - [x] Update script option
 - [ ] Add ability to generate mixes based on a video
+- [ ] Add caching for faster load times when loading data with yt-dlp
 
 **Fix:**
 
