@@ -136,11 +136,11 @@ Pr's are highly welcomed.
 
 **Features:**
 
-- [ ] Add like video functionality
-- [ ] Add subscribe to channel functionality
+- [x] Add like video functionality
 - [x] Use a JSON file to store custom playlists in order to allow more features
 - [ ] Handle visit channel in browser option
-- [ ] Update script option
+- [x] Update script option
+- [ ] Add ability to generate mixes based on a video
 
 **Fix:**
 
