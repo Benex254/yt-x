@@ -702,7 +702,8 @@ ${RED}󰈆${RESET}  Exit" | launcher "Select Media Action" | sed 's/.  //g')"
           ;;
         *)
           case "$PLAYER" in
-          mpv) mpv "$video_url" ;;
+          mpv) mpv "$video_url" --no-terminal &
+               sleep "$NOTIFICATION_DURATION";;
           vlc) vlc "$video_url" --video-title "$title" ;;
           esac
           ;;
